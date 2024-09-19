@@ -1,0 +1,77 @@
+<!doctype html>
+<html>
+
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Git Mailbot</title>
+
+<link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
+<link rel="stylesheet" href="https://cdn.rawgit.com/necolas/normalize.css/master/normalize.css">
+<link rel="stylesheet" href="https://cdn.rawgit.com/milligram/milligram/master/dist/milligram.min.css">
+
+<style>
+body {
+    max-width: 72.0rem;
+    padding-top: 7.5rem;
+    margin: 0 auto;
+}
+</style>
+</head>
+
+<body>
+
+<h1>Git Mailbot</h1>
+
+<p>
+Git Mailbot sends emails when changes are pushed to a Git repository on Github.
+This exists because Github's own email service is being deprecated and doesn't include diffs in the emails.
+</p>
+
+<h2>Getting Started</h2>
+
+<p>Configure a webhook in your repo's settings on Github:</p>
+
+<table>
+    <tr><td><b>Payload URL</b></td><td>https://mailbot.example.com/webhook</td></tr>
+    <tr><td><b>Content type</b></td><td>application/json</td></tr>
+    <tr><td><b>Events</b></td><td>Just the push event.</td></tr>
+    <tr><td><b>Secret</b></td><td>Ask <a href="https://davidlazar.org">David</a> or a friend.</td></tr>
+</table>
+
+<p>If your repo is private, invite the <a href="https://github.com/git-mailbot">git-mailbot</a> user as a read-only collaborator on your repo. For now, David will have to manually approve the invitation. This process can be streamlined if there is sufficient demand.</p>
+
+<p>In your repo, commit a file called <b>.github/mailbot.json</b> that specifies the recipients and the format of the emails (html or text):</p>
+
+<pre><code>{
+  "commitEmailFormat": "html",
+  "commitList": "alice@example.com,bob@example.net"
+}
+</code></pre>
+
+<p>Every email from mailbot contains the string <tt>17HFp8KmxqrjXDu3BDa6oRqAGxK1w6WFrE</tt> followed by the name of the repo. You can use this to easily filter mailbot emails in Gmail.</p>
+
+<h2>Features</h2>
+
+<p>Git Mailbot has some advantages over <a href="https://github.com/mit-pdos/mailbot">pdos/mailbot</a>:</p>
+
+<ul>
+    <li>SSL.</li>
+    <li>Doesn't require PDOS commit access.</li>
+    <li>Doesn't leak the names of private repos.</li>
+    <li>Based on <a href="https://github.com/git-multimail/git-multimail">git-multimail</a> which supports HTML emails.</li>
+    <li>One email per commit.</li>
+    <li>Easier to filter emails in Gmail.</li>
+</ul>
+
+<h2>Future work</h2>
+
+<ul>
+    <li>Receive emails for other people's repos.</li>
+    <li>Use deploy keys instead of the git-mailbot machine user.</li>
+    <li>Gitlab support.</li>
+</ul>
+
+</body>
+</html>
