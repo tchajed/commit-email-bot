@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -32,7 +32,7 @@ var indexHTML []byte
 var webhookSecret []byte
 
 func init() {
-	data, err := ioutil.ReadFile("index.html")
+	data, err := os.ReadFile("index.html")
 	if err != nil {
 		log.Fatalf("ReadFile: %s", err)
 	}
@@ -50,13 +50,16 @@ func main() {
 	}
 
 	secretPath := filepath.Join(*persistPath, "webhook_secret")
-	secret, err := ioutil.ReadFile(secretPath)
+	secret, err := os.ReadFile(secretPath)
 	if os.IsNotExist(err) {
 		r := make([]byte, 8)
-		rand.Read(r)
+		_, err = rand.Read(r)
+		if err != nil {
+			log.Fatal(err)
+		}
 		s := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(r)
 		secret = []byte(strings.ToLower(s))
-		err = ioutil.WriteFile(secretPath, secret, 0600)
+		err = os.WriteFile(secretPath, secret, 0600)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -86,7 +89,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		w.Write(indexHTML)
+		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", githubEventHandler)
 
@@ -181,7 +184,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	body := http.MaxBytesReader(w, req.Body, 1024*1024)
-	payload, _ := ioutil.ReadAll(body)
+	payload, _ := io.ReadAll(body)
 
 	h := hmac.New(sha1.New, webhookSecret)
 	h.Write(payload)
@@ -224,7 +227,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 			return
 		}
 
-		w.Write([]byte("Pong"))
+		_, _ = w.Write([]byte("Pong"))
 		return
 	}
 
@@ -237,7 +240,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 			log.Println(err)
 			return
 		}
-		w.Write([]byte("OK"))
+		_, _ = w.Write([]byte("OK"))
 		log.Printf("%s: push success: %s %s -> %s", pushEvent.Repository.FullName, pushEvent.Ref, pushEvent.Before[:8], pushEvent.After[:8])
 	}
 }
