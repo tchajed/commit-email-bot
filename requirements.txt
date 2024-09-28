@@ -1,0 +1,1 @@
+git-multimail@git+https://github.com/git-multimail/git-multimail
