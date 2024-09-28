@@ -270,13 +270,13 @@ func githubPushHandler(ev *GithubPushEvent) error {
 	}
 
 	log.Printf("post-receive.py %s %s %s", ev.Before, ev.After, ev.Ref)
-	cmd := exec.Command("./post-receive.py")
-	cmd.Args = append(cmd.Args, "--stdout")
+	cmd := exec.Command("./post-receive.py", "--stdout") // --stdout for debugging
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
 	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir)
-	_, err := cmd.Output()
+	out, err := cmd.Output()
 	if err == nil {
+		fmt.Println(string(out)) // debugging
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {
