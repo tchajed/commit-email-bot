@@ -47,17 +47,17 @@ class ExternalConfigEnvironmentMixin(git_multimail.Environment):
         super(ExternalConfigEnvironmentMixin, self).__init__(**kw)
         self.__reponame = external_config.get('repoName')
         self.__commitlist = external_config.get('commitList')
-        self.commit_email_format = external_config.get('commitEmailFormat', 'text')
+        self.commit_email_format = external_config.get('commitEmailFormat', 'html')
         self.from_commit = 'author'
         self.from_refchange = 'pusher'
         self.date_substitute = ''
 
     def get_revision_recipients(self, revision):
-        if self.__commitlist is None:
-            return super(ExternalConfigEnvironmentMixin,
-                         self).get_revision_recipients(revision)
         return self.__commitlist
-    
+
+    def get_refchange_recipients(self, refchange):
+        return self.__commitlist
+
     def get_repo_shortname(self):
         if self.__reponame is None:
             return super(ExternalConfigEnvironmentMixin,

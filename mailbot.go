@@ -92,7 +92,7 @@ func main() {
 	mux.HandleFunc("/webhook", githubEventHandler)
 
 	httpServer := &http.Server{
-		Addr:    ":https",
+		Addr:    ":8888",
 		Handler: mux,
 
 		// TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
@@ -120,16 +120,13 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	err = httpServer.ListenAndServeTLS("", "")
+	fmt.Println("listening on :8888")
+	err = httpServer.ListenAndServe()
 	if err != nil {
 		log.Printf("http listen: %s", err)
 	}
 
 	<-shutdownDone
-}
-
-func redirect(w http.ResponseWriter, req *http.Request) {
-	http.Redirect(w, req, "https://"+req.Host+req.URL.String(), http.StatusMovedPermanently)
 }
 
 type GithubEvent interface {
@@ -272,7 +269,9 @@ func githubPushHandler(ev *GithubPushEvent) error {
 		return err
 	}
 
+	log.Printf("post-receive.py %s %s %s", ev.Before, ev.After, ev.Ref)
 	cmd := exec.Command("./post-receive.py")
+	cmd.Args = append(cmd.Args, "--stdout")
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
 	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir)
