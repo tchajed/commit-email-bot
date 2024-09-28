@@ -6,7 +6,6 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha1"
-	"crypto/tls"
 	"encoding/base32"
 	"encoding/json"
 	"flag"
@@ -21,8 +20,6 @@ import (
 	"strings"
 	"syscall"
 	"time"
-
-	"golang.org/x/crypto/acme/autocert"
 )
 
 var hostname = flag.String("hostname", "", "ssl hostname")
@@ -74,14 +71,15 @@ func main() {
 	defer errorFile.Close()
 	errorLog := log.New(errorFile, "", log.LstdFlags|log.LUTC|log.Lshortfile)
 
-	sslKeysDir := filepath.Join(*persistPath, "ssl_keys")
-	certManager := autocert.Manager{
-		Cache:      autocert.DirCache(sslKeysDir),
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*hostname),
-	}
+	// sslKeysDir := filepath.Join(*persistPath, "ssl_keys")
+	// certManager := autocert.Manager{
+	// 	Cache:      autocert.DirCache(sslKeysDir),
+	// 	Prompt:     autocert.AcceptTOS,
+	// 	HostPolicy: autocert.HostWhitelist(*hostname),
+	// }
 	go func() {
-		err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+		// err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+		err := http.ListenAndServe(":http", nil)
 		if err != nil {
 			log.Fatalf("http.ListenAndServe: %s", err)
 		}
@@ -97,7 +95,7 @@ func main() {
 		Addr:    ":https",
 		Handler: mux,
 
-		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
+		// TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
 
 		ErrorLog: errorLog,
 
