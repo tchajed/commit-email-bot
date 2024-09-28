@@ -12,7 +12,7 @@ git_multimail.COMBINED_INTRO_TEMPLATE = ""
 git_multimail.FOOTER_TEMPLATE = """\
 
 -- \n\
-git mailbot 17HFp8KmxqrjXDu3BDa6oRqAGxK1w6WFrE %(repo_shortname)s
+git commit-emails jD27HVpTX3tELRBjcpGsK6io7 %(repo_shortname)s
 """
 
 git_multimail.REVISION_FOOTER_TEMPLATE = git_multimail.FOOTER_TEMPLATE
@@ -75,7 +75,7 @@ MailbotEnvironment = type('MailbotEnvironment', tuple(mailbox_mixins), {})
 
 config = git_multimail.Config('multimailhook')
 
-json_data = git_multimail.read_git_output(["show", "HEAD:.github/mailbot.json"])
+json_data = git_multimail.read_git_output(["show", "HEAD:.github/commit-emails.json"])
 external_config = json.loads(json_data)
 
 try:

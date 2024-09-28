@@ -16,7 +16,7 @@ Configure a webhook in your repo's settings on Github:
 
 If your repo is private, invite the @git-mailbot user as a read-only collaborator on your repo. For now, David will have to manually approve the invitation. This process can be streamlined if there is sufficient demand.
 
-In your repo, commit a file called `.github/mailbot.json` that specifies the recipients and the format of the emails (html or text):
+In your repo, commit a file called `.github/commit-emails.json` that specifies the recipients and the format of the emails (html or text):
 
 ```
 {
@@ -25,7 +25,7 @@ In your repo, commit a file called `.github/mailbot.json` that specifies the rec
 }
 ```
 
-Every email from mailbot contains the string `17HFp8KmxqrjXDu3BDa6oRqAGxK1w6WFrE` followed by the name of the repo. You can use this to easily filter mailbot emails in Gmail.
+Every email from mailbot contains the string `jD27HVpTX3tELRBjcpGsK6io7` followed by the name of the repo. You can use this to easily filter mailbot emails in Gmail.
 
 
 ## Features
