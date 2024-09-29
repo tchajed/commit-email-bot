@@ -1,11 +1,13 @@
 # syntax=docker/dockerfile:1
 # https://www.docker.com/blog/containerize-your-go-developer-environment-part-2/
-FROM golang:latest AS build
+FROM golang:latest
 WORKDIR /src
-COPY go.mod go.sum /src/
-RUN go mod download
 COPY . .
-RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/app .
+RUN go mod download
 
-FROM scratch AS bin
-COPY --from=build /out/app /
+RUN go build -o /app
+
+EXPOSE 8888
+ENV TLS_HOSTNAME="commit-emails.xyz"
+ENV WEBHOOK_SECRET=""
+CMD [ "/app", "-port", "8888" ]

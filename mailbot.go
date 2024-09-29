@@ -4,11 +4,9 @@ import (
 	"bytes"
 	"context"
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	_ "embed"
-	"encoding/base32"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -19,47 +17,37 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
-	"strings"
 	"syscall"
 	"time"
 
 	"golang.org/x/crypto/acme/autocert"
 )
 
-var hostname = flag.String("hostname", "", "ssl hostname")
+var hostname = flag.String("hostname", "", "tls hostname")
 var persistPath = flag.String("persist", "persist", "directory for persistent data")
 var port = flag.String("port", "https", "port to listen on")
 
 //go:embed index.html
 var indexHTML string
-var webhookSecret []byte
+var webhookSecret string
 
 func main() {
 	flag.Parse()
 	if *hostname == "" {
-		log.Fatal("please set -hostname")
+		*hostname = os.Getenv("TLS_HOSTNAME")
+	}
+	if *hostname == "" {
+		log.Fatal("please set -hostname or $TLS_HOSTNAME")
 	}
 
 	if err := os.MkdirAll(*persistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
 
-	secretPath := filepath.Join(*persistPath, "webhook_secret")
-	secret, err := os.ReadFile(secretPath)
-	if os.IsNotExist(err) {
-		r := make([]byte, 8)
-		_, err = rand.Read(r)
-		if err != nil {
-			log.Fatal(err)
-		}
-		s := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString(r)
-		secret = []byte(strings.ToLower(s))
-		err = os.WriteFile(secretPath, secret, 0600)
-		if err != nil {
-			log.Fatal(err)
-		}
+	webhookSecret = os.Getenv("WEBHOOK_SECRET")
+	if webhookSecret == "" {
+		log.Fatal("$WEBHOOK_SECRET is not set")
 	}
-	webhookSecret = secret
 
 	errorLogPath := filepath.Join(*persistPath, "errors.log")
 	errorFile, err := os.OpenFile(errorLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
@@ -69,9 +57,9 @@ func main() {
 	defer errorFile.Close()
 	errorLog := log.New(errorFile, "", log.LstdFlags|log.LUTC|log.Lshortfile)
 
-	sslKeysDir := filepath.Join(*persistPath, "ssl_keys")
+	tlsKeysDir := filepath.Join(*persistPath, "tls_keys")
 	certManager := autocert.Manager{
-		Cache:      autocert.DirCache(sslKeysDir),
+		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(*hostname),
 	}
@@ -178,7 +166,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	body := http.MaxBytesReader(w, req.Body, 1024*1024)
 	payload, _ := io.ReadAll(body)
 
-	h := hmac.New(sha256.New, webhookSecret)
+	h := hmac.New(sha256.New, []byte(webhookSecret))
 	h.Write(payload)
 	actualHash := h.Sum(nil)
 	if !hmac.Equal(actualHash, expectedHash) {
