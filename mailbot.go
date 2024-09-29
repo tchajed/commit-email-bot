@@ -6,6 +6,7 @@ import (
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
 	"encoding/base32"
 	"encoding/json"
 	"flag"
@@ -20,10 +21,13 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"golang.org/x/crypto/acme/autocert"
 )
 
 var hostname = flag.String("hostname", "", "ssl hostname")
 var persistPath = flag.String("persist", "persist", "directory for persistent data")
+var port = flag.String("port", "80", "port to listen on")
 
 var indexHTML []byte
 var webhookSecret []byte
@@ -71,15 +75,14 @@ func main() {
 	defer errorFile.Close()
 	errorLog := log.New(errorFile, "", log.LstdFlags|log.LUTC|log.Lshortfile)
 
-	// sslKeysDir := filepath.Join(*persistPath, "ssl_keys")
-	// certManager := autocert.Manager{
-	// 	Cache:      autocert.DirCache(sslKeysDir),
-	// 	Prompt:     autocert.AcceptTOS,
-	// 	HostPolicy: autocert.HostWhitelist(*hostname),
-	// }
+	sslKeysDir := filepath.Join(*persistPath, "ssl_keys")
+	certManager := autocert.Manager{
+		Cache:      autocert.DirCache(sslKeysDir),
+		Prompt:     autocert.AcceptTOS,
+		HostPolicy: autocert.HostWhitelist(*hostname),
+	}
 	go func() {
-		// err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
-		err := http.ListenAndServe(":http", nil)
+		err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 		if err != nil {
 			log.Fatalf("http.ListenAndServe: %s", err)
 		}
@@ -92,10 +95,10 @@ func main() {
 	mux.HandleFunc("/webhook", githubEventHandler)
 
 	httpServer := &http.Server{
-		Addr:    ":8888",
+		Addr:    fmt.Sprintf(":%s", *port),
 		Handler: mux,
 
-		// TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
+		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
 
 		ErrorLog: errorLog,
 
@@ -120,7 +123,7 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	fmt.Println("listening on :8888")
+	fmt.Printf("listening on :%s\n", *port)
 	err = httpServer.ListenAndServe()
 	if err != nil {
 		log.Printf("http listen: %s", err)
