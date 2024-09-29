@@ -41,17 +41,18 @@ X-Git-Multimail-Version: %(multimail_version)s
 Auto-Submitted: auto-generated
 """
 
+
 class ExternalConfigEnvironmentMixin(git_multimail.Environment):
     """Sets some parameters from an external config."""
 
     def __init__(self, external_config, **kw):
         super(ExternalConfigEnvironmentMixin, self).__init__(**kw)
-        self.__reponame = external_config.get('repoName')
-        self.__commitlist = external_config.get('commitList')
-        self.commit_email_format = external_config.get('commitEmailFormat', 'html')
-        self.from_commit = 'author'
-        self.from_refchange = 'pusher'
-        self.date_substitute = ''
+        self.__reponame = external_config.get("repoName")
+        self.__commitlist = external_config.get("commitList")
+        self.commit_email_format = external_config.get("commitEmailFormat", "html")
+        self.from_commit = "author"
+        self.from_refchange = "pusher"
+        self.date_substitute = ""
 
     def get_revision_recipients(self, revision):
         return self.__commitlist
@@ -61,20 +62,23 @@ class ExternalConfigEnvironmentMixin(git_multimail.Environment):
 
     def get_repo_shortname(self):
         if self.__reponame is None:
-            return super(ExternalConfigEnvironmentMixin,
-                         self).get_repo_shortname()
+            return super(ExternalConfigEnvironmentMixin, self).get_repo_shortname()
         return self.__reponame
 
     def get_emailprefix(self):
-      return self.get_repo_shortname() + ' '
+        return self.get_repo_shortname() + " "
 
 
 # List of mixins based on build_environment_klass.
-mailbox_mixins = [git_multimail.GenericEnvironmentMixin, ExternalConfigEnvironmentMixin] + git_multimail.COMMON_ENVIRONMENT_MIXINS + [git_multimail.Environment]
+mailbox_mixins = (
+    [git_multimail.GenericEnvironmentMixin, ExternalConfigEnvironmentMixin]
+    + git_multimail.COMMON_ENVIRONMENT_MIXINS
+    + [git_multimail.Environment]
+)
 
-MailbotEnvironment = type('MailbotEnvironment', tuple(mailbox_mixins), {})
+MailbotEnvironment = type("MailbotEnvironment", tuple(mailbox_mixins), {})
 
-config = git_multimail.Config('multimailhook')
+config = git_multimail.Config("multimailhook")
 
 json_data = git_multimail.read_git_output(["show", "HEAD:.github/commit-emails.json"])
 external_config = json.loads(json_data)
@@ -82,7 +86,7 @@ external_config = json.loads(json_data)
 try:
     environment = MailbotEnvironment(config=config, external_config=external_config)
 except git_multimail.ConfigurationException:
-    sys.stderr.write('*** %s\n' % sys.exc_info()[1])
+    sys.stderr.write("*** %s\n" % sys.exc_info()[1])
     sys.exit(1)
 
 parser = argparse.ArgumentParser()
