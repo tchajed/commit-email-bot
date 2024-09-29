@@ -1,6 +1,6 @@
-#syntax=docker/dockerfile:1.2
+# syntax=docker/dockerfile:1
 # https://www.docker.com/blog/containerize-your-go-developer-environment-part-2/
-FROM golang:latest as build
+FROM golang:latest AS build
 WORKDIR /src
 COPY go.mod go.sum /src/
 RUN go mod download
