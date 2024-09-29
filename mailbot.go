@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
+	_ "embed"
 	"encoding/base32"
 	"encoding/json"
 	"flag"
@@ -29,16 +30,9 @@ var hostname = flag.String("hostname", "", "ssl hostname")
 var persistPath = flag.String("persist", "persist", "directory for persistent data")
 var port = flag.String("port", "80", "port to listen on")
 
-var indexHTML []byte
+//go:embed index.html
+var indexHTML string
 var webhookSecret []byte
-
-func init() {
-	data, err := os.ReadFile("index.html")
-	if err != nil {
-		log.Fatalf("ReadFile: %s", err)
-	}
-	indexHTML = data
-}
 
 func main() {
 	flag.Parse()
@@ -90,7 +84,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		_, _ = w.Write(indexHTML)
+		_, _ = w.Write([]byte(indexHTML))
 	})
 	mux.HandleFunc("/webhook", githubEventHandler)
 
