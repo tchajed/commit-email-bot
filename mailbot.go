@@ -5,7 +5,7 @@ import (
 	"context"
 	"crypto/hmac"
 	"crypto/rand"
-	"crypto/sha1"
+	"crypto/sha256"
 	"encoding/base32"
 	"encoding/json"
 	"flag"
@@ -171,9 +171,9 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	sig := req.Header.Get("X-Hub-Signature")
+	sig := req.Header.Get("X-Hub-Signature-256")
 	var expectedHash []byte
-	if n, err := fmt.Sscanf(sig, "sha1=%x", &expectedHash); n != 1 {
+	if n, err := fmt.Sscanf(sig, "sha256=%x", &expectedHash); n != 1 {
 		http.Error(w, "invalid signature: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -181,7 +181,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	body := http.MaxBytesReader(w, req.Body, 1024*1024)
 	payload, _ := io.ReadAll(body)
 
-	h := hmac.New(sha1.New, webhookSecret)
+	h := hmac.New(sha256.New, webhookSecret)
 	h.Write(payload)
 	actualHash := h.Sum(nil)
 	if !hmac.Equal(actualHash, expectedHash) {
