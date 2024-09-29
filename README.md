@@ -1,20 +1,10 @@
-# Git Mailbot
+# GitHub commit-emails bot
 
-Git Mailbot sends emails when changes are pushed to a Git repository on Github.
-This exists because Github's own email service is being deprecated and doesn't include diffs in the emails.
+commit-emails bot sends emails when changes are pushed to a Git repository on Github.
 
 ## Getting started
 
-Configure a webhook in your repo's settings on Github:
-
-| Field        | Value                       |
-| ------------ | --------------------------- |
-| Payload URL  | https://example.com/webhook |
-| Content type | application/json            |
-| Events       | Just the push event.        |
-| Secret       | (webhook secret)            |
-
-If your repo is private, invite the @git-mailbot user as a read-only collaborator on your repo. For now, David will have to manually approve the invitation. This process can be streamlined if there is sufficient demand.
+[Install the commit-emails GitHub app](https://github.com/apps/commit-emails)
 
 In your repo, commit a file called `.github/commit-emails.json` that specifies the recipients and the format of the emails (html or text):
 
@@ -25,23 +15,8 @@ In your repo, commit a file called `.github/commit-emails.json` that specifies t
 }
 ```
 
-Every email from mailbot contains the string `jD27HVpTX3tELRBjcpGsK6io7` followed by the name of the repo. You can use this to easily filter mailbot emails in Gmail.
+Every email from commit-emails contains the string `jD27HVpTX3tELRBjcpGsK6io7` followed by the name of the repo. You can use this to easily filter commit emails in Gmail.
 
+## Acknowledgment
 
-## Features
-
-Git Mailbot has some advantages over [mit-pdos/mailbot](https://github.com/mit-pdos/mailbot):
-
-* SSL.
-* Doesn't require PDOS commit access.
-* Doesn't leak the names of private repos.
-* Based on [git-multimail](https://github.com/git-multimail/git-multimail) which supports HTML emails.
-* One email per commit.
-* Easier to filter emails in Gmail.
-
-## Future work
-
-* Receive emails for other people's repos.
-* Use deploy keys instead of the git-mailbot machine user.
-* Gitlab support.
-
+Based on David's [git-mailbot](https://github.com/davidlazar/git-mailbot).

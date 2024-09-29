@@ -1,4 +1,4 @@
-module git-mailbot
+module github.com/tchajed/commit-emails-bot
 
 go 1.22
 
