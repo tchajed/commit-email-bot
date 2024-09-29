@@ -28,7 +28,7 @@ import (
 
 var hostname = flag.String("hostname", "", "ssl hostname")
 var persistPath = flag.String("persist", "persist", "directory for persistent data")
-var port = flag.String("port", "80", "port to listen on")
+var port = flag.String("port", "https", "port to listen on")
 
 //go:embed index.html
 var indexHTML string
@@ -141,7 +141,7 @@ func (e GithubGenericEvent) GetSender() GithubSender   { return e.Sender }
 
 type GithubRepo struct {
 	FullName string `json:"full_name"`
-	SSHURL   string `json:"ssh_url"`
+	CloneUrl string `json:"clone_url"`
 	Private  bool
 }
 
@@ -208,7 +208,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	log.Printf("%s: %s from %s", event.GetRepository().FullName, eventType, event.GetSender().Login)
 
 	if eventType == "ping" {
-		url := event.GetRepository().SSHURL
+		url := event.GetRepository().CloneUrl
 		gitDir := filepath.Join(*persistPath, "repos", "github.com", event.GetRepository().FullName)
 
 		err := syncRepo(gitDir, url)
@@ -262,7 +262,7 @@ func syncRepo(gitDir string, url string) error {
 func githubPushHandler(ev *GithubPushEvent) error {
 	gitDir := filepath.Join(*persistPath, "repos", "github.com", ev.Repository.FullName)
 
-	if err := syncRepo(gitDir, ev.Repository.SSHURL); err != nil {
+	if err := syncRepo(gitDir, ev.Repository.CloneUrl); err != nil {
 		return err
 	}
 
