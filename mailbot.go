@@ -118,7 +118,7 @@ func main() {
 	}()
 
 	fmt.Printf("listening on :%s\n", *port)
-	err = httpServer.ListenAndServe()
+	err = httpServer.ListenAndServeTLS("", "")
 	if err != nil {
 		log.Printf("http listen: %s", err)
 	}
