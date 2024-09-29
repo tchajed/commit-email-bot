@@ -1,5 +1,6 @@
 #! /usr/bin/env python3
 
+import argparse
 import sys
 import json
 import git_multimail
@@ -84,9 +85,15 @@ except git_multimail.ConfigurationException:
     sys.stderr.write('*** %s\n' % sys.exc_info()[1])
     sys.exit(1)
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--debug", action="store_true")
+args = parser.parse_args()
 
 # Choose the method of sending emails based on the git config:
-mailer = git_multimail.choose_mailer(config, environment)
+if args.debug:
+    mailer = git_multimail.OutputMailer(sys.stdout)
+else:
+    mailer = git_multimail.choose_mailer(config, environment)
 
 # Read changes from stdin and send notification emails:
 git_multimail.run_as_post_receive_hook(environment, mailer)

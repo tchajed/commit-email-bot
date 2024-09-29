@@ -270,7 +270,7 @@ func githubPushHandler(ev *GithubPushEvent) error {
 	}
 
 	log.Printf("post-receive.py %s %s %s", ev.Before, ev.After, ev.Ref)
-	cmd := exec.Command("./post-receive.py", "--stdout") // --stdout for debugging
+	cmd := exec.Command("./post-receive.py", "--debug") // --debug for debugging
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
 	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir)
