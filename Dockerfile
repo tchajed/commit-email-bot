@@ -5,7 +5,7 @@ WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 COPY mailbot.go index.html ./
-RUN go build -o commit-email-bot
+RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
 
 FROM python:3.12-slim
 WORKDIR /app
@@ -16,7 +16,7 @@ RUN set -eux; \
   rm -rf /var/lib/apt/lists/*
 
 # Copy the Go binary built from the build stage
-COPY --from=build /src/commit-email-bot .
+COPY --from=build /out/commit-email-bot .
 COPY post-receive.py requirements.txt ./
 RUN pip3 install -r requirements.txt
 
