@@ -1,0 +1,15 @@
+services:
+  app:
+    build: .
+    image: commit-email-bot:latest
+    ports:
+      - "80:80"
+      - "8888:443"
+    environment:
+      TLS_HOSTNAME: commit-emails.xyz
+      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
+    secrets:
+      - webhook_secret
+secrets:
+  webhook_secret:
+    file: ./secrets/webhook_secret
