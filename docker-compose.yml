@@ -4,7 +4,7 @@ services:
     image: commit-email-bot:latest
     ports:
       - "80:80"
-      - "8888:443"
+      - "443:8888"
     volumes:
       - ./persist:/app/persist
     environment:

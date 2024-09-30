@@ -21,5 +21,6 @@ COPY post-receive.py requirements.txt ./
 RUN pip3 install -r requirements.txt
 
 EXPOSE 8888
+EXPOSE 80
 ENV TLS_HOSTNAME="commit-emails.xyz"
 CMD [ "/app/commit-email-bot", "-port", "8888" ]
