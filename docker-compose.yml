@@ -1,5 +1,5 @@
 services:
-  app:
+  commit-email-bot:
     build: .
     image: commit-email-bot:latest
     ports:
