@@ -9,4 +9,4 @@ services:
       - ./persist:/app/persist
     environment:
       TLS_HOSTNAME: commit-emails.xyz
-      DOTNEV_PRIVATE_KEY_PRODUCTION: $DOTNEV_PRIVATE_KEY_PRODUCTION
+      DOTENV_PRIVATE_KEY_PRODUCTION: $DOTENV_PRIVATE_KEY_PRODUCTION
