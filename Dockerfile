@@ -11,12 +11,13 @@ FROM python:3.12-slim
 WORKDIR /app
 RUN set -eux; \
   apt-get update; \
-  apt-get install -y --no-install-recommends git; \
+  apt-get install -y --no-install-recommends git curl; \
   apt-get clean; \
   rm -rf /var/lib/apt/lists/*
 
 # Install dotenvx
 RUN curl -sfS https://dotenvx.sh/install.sh | sh
+COPY .env.production ./
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
