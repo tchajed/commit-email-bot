@@ -21,7 +21,7 @@ COPY .env.production ./
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
-COPY post-receive.py requirements.txt ./
+COPY git_multimail_wrapper.py requirements.txt ./
 RUN pip3 install -r requirements.txt
 
 EXPOSE 8888

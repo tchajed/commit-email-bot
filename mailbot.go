@@ -33,6 +33,9 @@ var indexHTML []byte
 // read from $WEBHOOK_SECRET
 var webhookSecret []byte
 
+// read from $MAIL_SMTP_PASSWORD
+var smtpPassword string
+
 func main() {
 	flag.Parse()
 	if *hostname == "" {
@@ -47,6 +50,10 @@ func main() {
 		if *port == "https" {
 			log.Fatal("https on localhost will not work (choose another port)")
 		}
+	}
+	smtpPassword = os.Getenv("MAIL_SMTP_PASSWORD")
+	if smtpPassword == "" {
+		log.Printf("no MAIL_SMTP_PASSWORD set, will print to stdout")
 	}
 
 	if err := os.MkdirAll(*persistPath, 0770); err != nil {
@@ -133,6 +140,31 @@ func main() {
 	}
 
 	<-shutdownDone
+}
+
+type CommitEmailConfig struct {
+	MailingList string `json:"mailingList"`
+	EmailFormat string `json:"emailFormat,omitempty"`
+}
+
+// getConfig reads the commit-emails.json file for a git repo
+func getConfig(gitRepo string) (config CommitEmailConfig, err error) {
+	configText, err := runGitCmd(gitRepo, "show", "HEAD:.github/commit-emails.json")
+	if err != nil {
+		return
+	}
+	dec := json.NewDecoder(bytes.NewReader(configText))
+	dec.DisallowUnknownFields()
+	err = dec.Decode(&config)
+	if err != nil {
+		return CommitEmailConfig{}, fmt.Errorf("decoding commit-emails.json: %s", err)
+	}
+	if config.EmailFormat != "" {
+		if !(config.EmailFormat == "html" || config.EmailFormat == "text") {
+			return CommitEmailConfig{}, fmt.Errorf("invalid emailFormat (should be html or text): %q", config.EmailFormat)
+		}
+	}
+	return
 }
 
 type GithubEvent interface {
@@ -275,18 +307,39 @@ func githubPushHandler(ev *GithubPushEvent) error {
 		return err
 	}
 
-	log.Printf("post-receive.py %s %s %s", ev.Before, ev.After, ev.Ref)
-	cmd := exec.Command("./post-receive.py", "--debug") // --debug for debugging
+	log.Printf("git_multimail_wrapper.py %s %s %s", ev.Before, ev.After, ev.Ref)
+	args := []string{}
+	if smtpPassword == "" {
+		args = append(args, "--stdout")
+	}
+	config, err := getConfig(gitDir)
+	if err != nil {
+		log.Printf("no commit-emails.json found for %s: %s", ev.Repository.FullName, err)
+		return fmt.Errorf("no commit-emails.json found for %s: %s", ev.Repository.FullName, err)
+	}
+	args = append(args, "-c", fmt.Sprintf("multimailhook.mailingList=%s", config.MailingList))
+	if config.EmailFormat != "" {
+		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.EmailFormat))
+	}
+	cmd := exec.Command("./git_multimail_wrapper.py", args...)
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
-	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir)
-	out, err := cmd.Output()
+	cmd.Env = os.Environ()
+	cmd.Env = append(cmd.Env, "GIT_DIR="+gitDir)
+	// constants that configure git_multimail
+	cmd.Env = append(cmd.Env, "GIT_CONFIG_GLOBAL="+"git-multimail.config")
+	// Provide the password via an environment variable - it cannot be in the
+	// config file since that's public, and we don't want it to be in the command
+	// line with -c since other processes can read that.
+	//
+	// Single quotes are necessary for git to parse this correctly.
+	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPassword))
+	_, err = cmd.Output()
 	if err == nil {
-		fmt.Println(string(out)) // debugging
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {
-		return fmt.Errorf("post-receive.py failed: %s:\n%s", ee.ProcessState.String(), ee.Stderr)
+		return fmt.Errorf("git_multimail_wrapper.py failed: %s:\n%s", ee.ProcessState.String(), ee.Stderr)
 	}
 	return err
 }
