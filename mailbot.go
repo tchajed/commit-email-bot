@@ -23,7 +23,7 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-var hostname = flag.String("hostname", "", "tls hostname")
+var hostname = flag.String("hostname", "", "tls hostname (use localhost to disable https)")
 var persistPath = flag.String("persist", "persist", "directory for persistent data")
 var port = flag.String("port", "https", "port to listen on")
 
@@ -40,6 +40,13 @@ func main() {
 	}
 	if *hostname == "" {
 		log.Fatal("please set -hostname or $TLS_HOSTNAME")
+	}
+	insecure := false
+	if *hostname == "localhost" {
+		insecure = true
+		if *port == "https" {
+			log.Fatal("https on localhost will not work (choose another port)")
+		}
 	}
 
 	if err := os.MkdirAll(*persistPath, 0770); err != nil {
@@ -66,12 +73,19 @@ func main() {
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(*hostname),
 	}
-	go func() {
-		err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
-		if err != nil {
-			log.Fatalf("http.ListenAndServe: %s", err)
-		}
-	}()
+	// This HTTP handler listens for ACME "http-01" challenges, and redirects
+	// other requests. It's useful for the latter in production in case someone
+	// navigates to the website without https.
+	//
+	// With insecure (used for localhost) this makes no sense to run.
+	if !insecure {
+		go func() {
+			err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
+			if err != nil {
+				log.Fatalf("http.ListenAndServe: %s", err)
+			}
+		}()
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -109,7 +123,11 @@ func main() {
 	}()
 
 	fmt.Printf("listening on :%s\n", *port)
-	err = httpServer.ListenAndServeTLS("", "")
+	if insecure {
+		err = httpServer.ListenAndServe()
+	} else {
+		err = httpServer.ListenAndServeTLS("", "")
+	}
 	if err != nil {
 		log.Printf("http listen: %s", err)
 	}
