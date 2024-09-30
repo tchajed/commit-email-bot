@@ -17,6 +17,10 @@ In your repo, commit a file called `.github/commit-emails.json` that specifies t
 
 Every email from commit-emails-bot contains the string `jD27HVpTX3tELRBjcpGsK6io7` followed by the name of the repo. You can use this to easily filter commit emails in Gmail.
 
+## Deploying
+
+Use `docker compose up --build`.
+
 ## Acknowledgment
 
 Based on David's [git-mailbot](https://github.com/davidlazar/git-mailbot).
