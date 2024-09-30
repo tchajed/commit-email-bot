@@ -30,7 +30,7 @@ var port = flag.String("port", "https", "port to listen on")
 //go:embed index.html
 var indexHTML string
 
-// read from $WEBHOOK_SECRET_FILE
+// read from $WEBHOOK_SECRET
 var webhookSecret []byte
 
 func main() {
@@ -46,15 +46,11 @@ func main() {
 		log.Fatal(err)
 	}
 
-	secretFile := os.Getenv("WEBHOOK_SECRET_FILE")
-	if secretFile == "" {
-		log.Fatal("$WEBHOOK_SECRET_FILE is not set")
+	secret := os.Getenv("WEBHOOK_SECRET")
+	if secret == "" {
+		log.Fatal("$WEBHOOK_SECRET is not set")
 	}
-	var err error
-	webhookSecret, err = os.ReadFile(secretFile)
-	if err != nil {
-		log.Fatal("reading secret file: ", err)
-	}
+	webhookSecret = []byte(secret)
 
 	errorLogPath := filepath.Join(*persistPath, "errors.log")
 	errorFile, err := os.OpenFile(errorLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)

@@ -15,6 +15,9 @@ RUN set -eux; \
   apt-get clean; \
   rm -rf /var/lib/apt/lists/*
 
+# Install dotenvx
+RUN curl -sfS https://dotenvx.sh/install.sh | sh
+
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
 COPY post-receive.py requirements.txt ./
@@ -23,4 +26,4 @@ RUN pip3 install -r requirements.txt
 EXPOSE 8888
 EXPOSE 80
 ENV TLS_HOSTNAME="commit-emails.xyz"
-CMD [ "/app/commit-email-bot", "-port", "8888" ]
+CMD [ "dotenvx", "run", "--", "/app/commit-email-bot", "-port", "8888" ]

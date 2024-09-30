@@ -9,12 +9,4 @@ services:
       - ./persist:/app/persist
     environment:
       TLS_HOSTNAME: commit-emails.xyz
-      WEBHOOK_SECRET_FILE: /run/secrets/webhook_secret
-      MAIL_SMTP_PASSWORD_FILE: /run/secrets/mail_smtp_password
-    secrets:
-      - webhook_secret
-secrets:
-  webhook_secret:
-    file: ./secrets/webhook_secret
-  mail_smtp_password:
-    file: ./secrets/mail_smtp_password
+      DOTNEV_PRIVATE_KEY_PRODUCTION: $DOTNEV_PRIVATE_KEY_PRODUCTION
