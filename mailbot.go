@@ -324,6 +324,7 @@ func githubPushHandler(ev *GithubPushEvent) error {
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
+	cmd.Stderr = os.Stderr
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "GIT_DIR="+gitDir)
 	// constants that configure git_multimail
