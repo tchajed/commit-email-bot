@@ -28,7 +28,7 @@ var persistPath = flag.String("persist", "persist", "directory for persistent da
 var port = flag.String("port", "https", "port to listen on")
 
 //go:embed index.html
-var indexHTML string
+var indexHTML []byte
 
 // read from $WEBHOOK_SECRET
 var webhookSecret []byte
@@ -89,7 +89,7 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
-		_, _ = w.Write([]byte(indexHTML))
+		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", githubEventHandler)
 

@@ -1,4 +1,5 @@
+# compiled binary
+commit-emails-bot
 .venv/
 persist/
-secrets/
 .env.keys
