@@ -13,7 +13,7 @@ git_multimail.COMBINED_INTRO_TEMPLATE = ""
 git_multimail.FOOTER_TEMPLATE = """\
 
 -- \n\
-git commit-emails jD27HVpTX3tELRBjcpGsK6io7 %(repo_shortname)s
+commit-email-bot jD27HVpTX3tELRBjcpGsK6io7 %(repo_shortname)s
 """
 
 git_multimail.REVISION_FOOTER_TEMPLATE = git_multimail.FOOTER_TEMPLATE
