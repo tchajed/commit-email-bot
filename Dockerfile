@@ -26,5 +26,5 @@ RUN pip3 install -r requirements.txt
 
 EXPOSE 8888
 EXPOSE 80
-ENV TLS_HOSTNAME="www.commit-emails.xyz"
+ENV TLS_HOSTNAME="commit-emails.xyz"
 CMD [ "dotenvx", "run", "--", "/app/commit-email-bot", "-port", "8888" ]
