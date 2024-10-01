@@ -24,72 +24,68 @@ import (
 	"golang.org/x/crypto/acme/autocert"
 )
 
-var hostname = flag.String("hostname", "", "tls hostname (use localhost to disable https)")
-var persistPath = flag.String("persist", "persist", "directory for persistent data")
-var port = flag.String("port", "https", "port to listen on")
+type AppConfig struct {
+	Hostname    string
+	PersistPath string
+	Port        string
 
-//go:embed index.html
-var indexHTML []byte
+	WebhookSecret []byte
+	SmtpPassword  string
+	AppId         int64
+	AppPrivateKey []byte
+}
 
-// read from $WEBHOOK_SECRET
-var webhookSecret []byte
+func NewAppConfig() AppConfig {
+	config := AppConfig{}
 
-// read from $MAIL_SMTP_PASSWORD
-var smtpPassword string
-
-// read from $GITHUB_APP_ID
-var appId int64
-
-// read from $GITHUB_APP_PRIVATE_KEY
-var appPrivateKey []byte
-
-var errorLog *log.Logger
-
-func main() {
-	flag.Parse()
-	if *hostname == "" {
-		*hostname = os.Getenv("TLS_HOSTNAME")
+	config.Hostname = os.Getenv("TLS_HOSTNAME")
+	if config.Hostname == "" {
+		config.Hostname = "localhost"
 	}
-	if *hostname == "" {
-		log.Fatal("please set -hostname or $TLS_HOSTNAME")
+	config.PersistPath = os.Getenv("PERSIST_PATH")
+	config.Port = "https"
+	config.WebhookSecret = []byte(os.Getenv("WEBHOOK_SECRET"))
+	config.SmtpPassword = os.Getenv("MAIL_SMTP_PASSWORD")
+	appIdStr := os.Getenv("GITHUB_APP_ID")
+	if appIdStr == "" {
+		appIdStr = "0"
 	}
-	if *hostname == "localhost" {
-		if *port == "https" {
-			log.Fatal("https on localhost will not work (choose another port)")
-		}
-	}
-	smtpPassword = os.Getenv("MAIL_SMTP_PASSWORD")
-	if smtpPassword == "" {
-		log.Printf("no MAIL_SMTP_PASSWORD set, will print to stdout")
+	var err error
+	config.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
+	if err != nil {
+		log.Fatalf("GITHUB_APP_ID is not a number: %v", err)
 	}
 	keyEncoded := os.Getenv("GITHUB_APP_PRIVATE_KEY")
 	if keyEncoded != "" {
-		// base64 decode to appPrivateKey
-		var err error
-		appPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
+		// base64 decode
+		config.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
 		if err != nil {
 			log.Fatal("private key has invalid base64")
 		}
 	}
-	appIdStr := os.Getenv("GITHUB_APP_ID")
-	if appIdStr != "" {
-		var err error
-		appId, err = strconv.ParseInt(appIdStr, 10, 64)
-		if err != nil {
-			log.Fatalf("invalid GITHUB_APP_ID: %v", err)
-		}
-	}
+	return config
+}
 
-	secret := os.Getenv("WEBHOOK_SECRET")
-	if secret == "" {
-		log.Fatal("$WEBHOOK_SECRET is not set")
-	}
-	webhookSecret = []byte(secret)
+func (c AppConfig) Insecure() bool {
+	return c.Hostname == "localhost"
+}
 
-	if err := os.MkdirAll(*persistPath, 0770); err != nil {
+//go:embed index.html
+var indexHTML []byte
+
+var errorLog *log.Logger
+
+func main() {
+	config := NewAppConfig()
+	flag.StringVar(&config.Hostname, "hostname", config.Hostname, "tls hostname (use localhost to disable https)")
+	flag.StringVar(&config.PersistPath, "persist", config.PersistPath, "directory for persistent data")
+	flag.StringVar(&config.Port, "port", config.Port, "port to listen on")
+	flag.Parse()
+
+	if err := os.MkdirAll(config.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
-	errorLogPath := filepath.Join(*persistPath, "errors.log")
+	errorLogPath := filepath.Join(config.PersistPath, "errors.log")
 	errorFile, err := os.OpenFile(errorLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatal(err)
@@ -97,18 +93,18 @@ func main() {
 	defer errorFile.Close()
 	errorLog = log.New(errorFile, "", log.LstdFlags|log.LUTC|log.Lshortfile)
 
-	tlsKeysDir := filepath.Join(*persistPath, "tls_keys")
+	tlsKeysDir := filepath.Join(config.PersistPath, "tls_keys")
 	certManager := autocert.Manager{
 		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(*hostname, fmt.Sprintf("www.%s", *hostname)),
+		HostPolicy: autocert.HostWhitelist(config.PersistPath, fmt.Sprintf("www.%s", config.Hostname)),
 	}
 	// This HTTP handler listens for ACME "http-01" challenges, and redirects
 	// other requests. It's useful for the latter in production in case someone
 	// navigates to the website without https.
 	//
 	// On localhost this makes no sense to run.
-	if *hostname != "localhost" {
+	if config.Insecure() {
 		go func() {
 			err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 			if err != nil {
@@ -121,10 +117,12 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write(indexHTML)
 	})
-	mux.HandleFunc("/webhook", githubEventHandler)
+	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
+		githubEventHandler(config, w, req)
+	})
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", *port),
+		Addr:    fmt.Sprintf(":%s", config.Port),
 		Handler: mux,
 
 		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
@@ -152,8 +150,8 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	fmt.Printf("listening on :%s\n", *port)
-	if *hostname == "localhost" {
+	fmt.Printf("host %s listening on :%s\n", config.Hostname, config.Port)
+	if config.Insecure() {
 		err = httpServer.ListenAndServe()
 	} else {
 		err = httpServer.ListenAndServeTLS("", "")
@@ -190,8 +188,8 @@ func getConfig(gitRepo string) (config CommitEmailConfig, err error) {
 	return
 }
 
-func githubEventHandler(w http.ResponseWriter, req *http.Request) {
-	payload, err := github.ValidatePayload(req, webhookSecret)
+func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request) {
+	payload, err := github.ValidatePayload(req, cfg.WebhookSecret)
 	if err != nil {
 		http.Error(w, "could not validate payload: "+err.Error(), http.StatusBadRequest)
 		return
@@ -205,11 +203,11 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("Pong"))
 		return
 	case *github.PushEvent:
-		err := githubPushHandler(context.TODO(), event)
+		err := githubPushHandler(cfg, context.TODO(), event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			log.Println(err)
+			errorLog.Println(err)
 			return
 		}
 		_, _ = w.Write([]byte("OK"))
@@ -221,30 +219,8 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func syncRepo(gitDir string, url string) error {
-	fi, err := os.Stat(gitDir)
-	if os.IsNotExist(err) {
-		err := gitClone(url, gitDir)
-		if err != nil {
-			return err
-		}
-		log.Printf("Cloned %s to %s", url, gitDir)
-	} else if err != nil {
-		return err
-	} else if !fi.IsDir() {
-		return fmt.Errorf("%s exists and is not a directory", gitDir)
-	}
-
-	err = gitFetch(gitDir)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(http.DefaultTransport, appId, *ev.Installation.ID, appPrivateKey)
+func githubPushHandler(cfg AppConfig, ctx context.Context, ev *github.PushEvent) error {
+	itr, err := ghinstallation.New(http.DefaultTransport, cfg.AppId, *ev.Installation.ID, cfg.AppPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -253,15 +229,14 @@ func githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
 		return err
 	}
 	log.Printf("token: %s", token) // TODO: debugging only
-	gitDir := filepath.Join(*persistPath, "repos", "github.com", *ev.Repo.FullName)
+	gitDir := filepath.Join(cfg.PersistPath, "repos", "github.com", *ev.Repo.FullName)
 
 	if err := syncRepo(gitDir, *ev.Repo.CloneURL); err != nil {
 		return err
 	}
 
-	log.Printf("git_multimail_wrapper.py %s %s %s", *ev.Before, *ev.After, *ev.Ref)
 	args := []string{}
-	if smtpPassword == "" {
+	if cfg.SmtpPassword == "" {
 		args = append(args, "--stdout")
 	}
 	config, err := getConfig(gitDir)
@@ -288,7 +263,7 @@ func githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
 	// line with -c since other processes can read that.
 	//
 	// Single quotes are necessary for git to parse this correctly.
-	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPassword))
+	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", cfg.SmtpPassword))
 	_, err = cmd.Output()
 	if err == nil {
 		return nil
@@ -297,26 +272,4 @@ func githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
 		return fmt.Errorf("git_multimail_wrapper.py failed: %s:\n%s", ee.ProcessState.String(), ee.Stderr)
 	}
 	return err
-}
-
-func gitClone(url string, dest string) error {
-	_, err := runGitCmd(dest, "clone", "--bare", "--quiet", url, dest)
-	return err
-}
-
-func gitFetch(gitDir string) error {
-	_, err := runGitCmd(gitDir, "fetch", "--quiet", "--force", "origin", "*:*")
-	return err
-}
-
-func runGitCmd(gitDir string, args ...string) ([]byte, error) {
-	cmd := exec.Command("git", args...)
-	cmd.Env = append(os.Environ(), "GIT_DIR="+gitDir)
-	out, err := cmd.Output()
-	if err != nil {
-		if ee, ok := err.(*exec.ExitError); ok {
-			return out, fmt.Errorf("git %v failed: %s: %q", args, ee.ProcessState.String(), ee.Stderr)
-		}
-	}
-	return out, err
 }
