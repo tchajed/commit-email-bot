@@ -331,7 +331,7 @@ func githubPushHandler(ev *GithubPushEvent) error {
 		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.EmailFormat))
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s <notifications@commit-emails.xyz>", ev.HeadCommit.Committer.Name))
-	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/%%(id)s", ev.Repository.Url))
+	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", ev.Repository.Url))
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
