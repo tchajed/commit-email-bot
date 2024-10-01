@@ -14,9 +14,11 @@ import (
 	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"syscall"
 	"time"
 
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v65/github"
 	"golang.org/x/crypto/acme/autocert"
 )
@@ -33,6 +35,12 @@ var webhookSecret []byte
 
 // read from $MAIL_SMTP_PASSWORD
 var smtpPassword string
+
+// read from $GITHUB_APP_ID
+var appId int64
+
+// read from $GITHUB_APP_PRIVATE_KEY
+var appPrivateKey []byte
 
 var errorLog *log.Logger
 
@@ -53,9 +61,14 @@ func main() {
 	if smtpPassword == "" {
 		log.Printf("no MAIL_SMTP_PASSWORD set, will print to stdout")
 	}
-
-	if err := os.MkdirAll(*persistPath, 0770); err != nil {
-		log.Fatal(err)
+	appPrivateKey = []byte(os.Getenv("GITHUB_APP_PRIVATE_KEY"))
+	appIdStr := os.Getenv("GITHUB_APP_ID")
+	if appIdStr != "" {
+		var err error
+		appId, err = strconv.ParseInt(appIdStr, 10, 64)
+		if err != nil {
+			log.Fatalf("invalid GITHUB_APP_ID: %v", err)
+		}
 	}
 
 	secret := os.Getenv("WEBHOOK_SECRET")
@@ -64,6 +77,9 @@ func main() {
 	}
 	webhookSecret = []byte(secret)
 
+	if err := os.MkdirAll(*persistPath, 0770); err != nil {
+		log.Fatal(err)
+	}
 	errorLogPath := filepath.Join(*persistPath, "errors.log")
 	errorFile, err := os.OpenFile(errorLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
@@ -180,7 +196,7 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("Pong"))
 		return
 	case *github.PushEvent:
-		err := githubPushHandler(event)
+		err := githubPushHandler(context.TODO(), event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -218,7 +234,16 @@ func syncRepo(gitDir string, url string) error {
 	return nil
 }
 
-func githubPushHandler(ev *github.PushEvent) error {
+func githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
+	itr, err := ghinstallation.New(http.DefaultTransport, appId, *ev.Installation.ID, appPrivateKey)
+	if err != nil {
+		return err
+	}
+	token, err := itr.Token(ctx)
+	if err != nil {
+		return err
+	}
+	log.Printf("token: %s", token) // TODO: debugging only
 	gitDir := filepath.Join(*persistPath, "repos", "github.com", *ev.Repo.FullName)
 
 	if err := syncRepo(gitDir, *ev.Repo.CloneURL); err != nil {
