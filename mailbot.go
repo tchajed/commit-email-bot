@@ -6,7 +6,6 @@ import (
 	"crypto/tls"
 	_ "embed"
 	"encoding/base64"
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -176,31 +175,6 @@ func main() {
 	}
 
 	<-shutdownDone
-}
-
-type CommitEmailConfig struct {
-	MailingList string `json:"mailingList"`
-	EmailFormat string `json:"emailFormat,omitempty"`
-}
-
-// getConfig reads the commit-emails.json file for a git repo
-func getConfig(gitRepo string) (config CommitEmailConfig, err error) {
-	configText, err := runGitCmd(gitRepo, "show", "HEAD:.github/commit-emails.json")
-	if err != nil {
-		return
-	}
-	dec := json.NewDecoder(bytes.NewReader(configText))
-	dec.DisallowUnknownFields()
-	err = dec.Decode(&config)
-	if err != nil {
-		return CommitEmailConfig{}, fmt.Errorf("decoding commit-emails.json: %s", err)
-	}
-	if config.EmailFormat != "" {
-		if !(config.EmailFormat == "html" || config.EmailFormat == "text") {
-			return CommitEmailConfig{}, fmt.Errorf("invalid emailFormat (should be html or text): %q", config.EmailFormat)
-		}
-	}
-	return
 }
 
 type eventKey string
