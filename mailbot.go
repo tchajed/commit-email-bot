@@ -161,6 +161,7 @@ func main() {
 	go func() {
 		<-sigChan
 		fmt.Println("Shutting down...")
+		slog.Info("shutting down")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
@@ -172,6 +173,7 @@ func main() {
 	}()
 
 	fmt.Printf("host %s listening on :%s\n", config.Hostname, config.Port)
+	slog.Info("starting server")
 	if config.Insecure() {
 		err = httpServer.ListenAndServe()
 	} else {
