@@ -3,7 +3,6 @@
 FROM golang:1.23-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
-ENV GOMAXPROCS=1
 RUN go mod download
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
