@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -61,7 +62,15 @@ func main() {
 	if smtpPassword == "" {
 		log.Printf("no MAIL_SMTP_PASSWORD set, will print to stdout")
 	}
-	appPrivateKey = []byte(os.Getenv("GITHUB_APP_PRIVATE_KEY"))
+	keyEncoded := os.Getenv("GITHUB_APP_PRIVATE_KEY")
+	if keyEncoded != "" {
+		// base64 decode to appPrivateKey
+		var err error
+		appPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
+		if err != nil {
+			log.Fatal("private key has invalid base64")
+		}
+	}
 	appIdStr := os.Getenv("GITHUB_APP_ID")
 	if appIdStr != "" {
 		var err error
