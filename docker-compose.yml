@@ -1,7 +1,7 @@
 services:
   commit-email-bot:
     build: .
-    image: commit-email-bot:latest
+    image: tchajed/commit-email-bot:latest
     ports:
       - "80:80"
       - "443:8888"
