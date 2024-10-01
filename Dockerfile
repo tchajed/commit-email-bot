@@ -4,7 +4,7 @@ FROM golang:1.23-alpine AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY mailbot.go index.html ./
+COPY . ./
 RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
 
 FROM python:3.12-slim
