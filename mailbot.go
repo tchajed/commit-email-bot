@@ -22,6 +22,7 @@ import (
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v62/github"
+	"github.com/gregjones/httpcache"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -129,12 +130,13 @@ func main() {
 		}()
 	}
 
+	ct := httpcache.NewMemoryCacheTransport()
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
-		githubEventHandler(config, w, req)
+		githubEventHandler(config, ct, w, req)
 	})
 
 	httpServer := &http.Server{
@@ -184,7 +186,7 @@ func main() {
 
 type eventKey string
 
-func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request) {
+func githubEventHandler(cfg AppConfig, transport http.RoundTripper, w http.ResponseWriter, req *http.Request) {
 	payload, err := github.ValidatePayload(req, cfg.WebhookSecret)
 	if err != nil {
 		http.Error(w, "could not validate payload: "+err.Error(), http.StatusBadRequest)
@@ -203,7 +205,7 @@ func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request)
 		defer cancel()
 		ctx = context.WithValue(ctx, eventKey("installation"), *event.Installation.ID)
 		ctx = context.WithValue(ctx, eventKey("repo"), *event.Repo.FullName)
-		err := githubPushHandler(cfg, ctx, event)
+		err := githubPushHandler(cfg, ctx, transport, event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -227,8 +229,8 @@ func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request)
 	}
 }
 
-func githubPushHandler(cfg AppConfig, ctx context.Context, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(http.DefaultTransport, cfg.AppId, *ev.Installation.ID, cfg.AppPrivateKey)
+func githubPushHandler(cfg AppConfig, ctx context.Context, transport http.RoundTripper, ev *github.PushEvent) error {
+	itr, err := ghinstallation.New(transport, cfg.AppId, *ev.Installation.ID, cfg.AppPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -237,9 +239,13 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, ev *github.PushEvent)
 		return err
 	}
 	fmt.Printf("token: %s\n", token) // TODO: debugging only
-	gitDir := filepath.Join(cfg.PersistPath, "repos", "github.com", *ev.Repo.FullName)
-
-	if err := syncRepo(gitDir, *ev.Repo.CloneURL); err != nil {
+	client := github.NewClient(&http.Client{Transport: itr})
+	gitDir, err := syncRepo(cfg, ctx, client, ev.Repo)
+	if err != nil {
+		if _, ok := err.(MissingConfigError); ok {
+			slog.Info("push to unconfigured repo", slog.String("repo", *ev.Repo.FullName))
+			return nil
+		}
 		return err
 	}
 

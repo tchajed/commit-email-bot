@@ -1,32 +1,51 @@
 package main
 
 import (
+	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"os"
 	"os/exec"
+	"path/filepath"
+
+	"github.com/google/go-github/v62/github"
 )
 
-func syncRepo(gitDir string, url string) error {
+func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
+	return filepath.Join(persistPath, "repos", "github.com", *repo.FullName)
+}
+
+func syncRepo(cfg AppConfig, ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
+	_, _, _, err = client.Repositories.GetContents(ctx, *repo.Owner.Login, *repo.Name, ".github/commit-emails.json", nil)
+	if err != nil {
+		if _, ok := err.(*github.RateLimitError); ok {
+			return "", fmt.Errorf("rate limit error: %s", err)
+		}
+		if _, ok := err.(*github.AbuseRateLimitError); ok {
+			return "", fmt.Errorf("rate limit error: %s", err)
+		}
+		// TODO: only do this for 404
+		return "", MissingConfigError{}
+	}
+	gitDir = repoGitDir(cfg.PersistPath, repo)
 	fi, err := os.Stat(gitDir)
 	if os.IsNotExist(err) {
-		err := gitClone(url, gitDir)
+		err := gitClone(*repo.CloneURL, gitDir)
 		if err != nil {
-			return err
+			return "", err
 		}
-		log.Printf("Cloned %s to %s", url, gitDir)
+		slog.Info("clone", slog.String("repo", *repo.FullName))
 	} else if err != nil {
-		return err
+		return "", err
 	} else if !fi.IsDir() {
-		return fmt.Errorf("%s exists and is not a directory", gitDir)
+		return "", fmt.Errorf("%s exists and is not a directory", gitDir)
 	}
 
 	err = gitFetch(gitDir)
 	if err != nil {
-		return err
+		return
 	}
-
-	return nil
+	return
 }
 
 func gitClone(url string, dest string) error {

@@ -5,6 +5,7 @@ go 1.22
 require (
 	github.com/bradleyfalzon/ghinstallation/v2 v2.11.0
 	github.com/google/go-github/v62 v62.0.0
+	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	golang.org/x/crypto v0.27.0
 )
 
