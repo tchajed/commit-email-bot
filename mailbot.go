@@ -177,11 +177,6 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	}
 	switch event := event.(type) {
 	case *github.PingEvent:
-		err := githubPingHandler(event)
-		if err != nil {
-			errorLog.Printf("ping handler failed: %s", err)
-			http.Error(w, err.Error(), http.StatusBadRequest)
-		}
 		_, _ = w.Write([]byte("Pong"))
 		return
 	case *github.PushEvent:
@@ -194,6 +189,10 @@ func githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		}
 		_, _ = w.Write([]byte("OK"))
 		log.Printf("%s: push success: %s %s -> %s", *event.Repo.FullName, *event.Ref, (*event.Before)[:8], (*event.After)[:8])
+	case *github.InstallationEvent:
+		log.Printf("installation %s by %s", *event.Action, *event.Installation.Account.Login)
+		// TODO: check repositories we now have access to for commit-emails.json
+	default:
 	}
 }
 
@@ -216,18 +215,6 @@ func syncRepo(gitDir string, url string) error {
 		return err
 	}
 
-	return nil
-}
-
-func githubPingHandler(ev *github.PingEvent) error {
-	url := *ev.Repo.CloneURL
-	gitDir := filepath.Join(*persistPath, "repos", "github.com", *ev.Repo.FullName)
-
-	err := syncRepo(gitDir, url)
-	if err != nil {
-		err = fmt.Errorf("syncing repo %q failed: %s", url, err)
-		return err
-	}
 	return nil
 }
 
