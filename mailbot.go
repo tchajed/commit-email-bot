@@ -183,11 +183,17 @@ func (e GithubGenericEvent) GetSender() GithubSender   { return e.Sender }
 type GithubRepo struct {
 	FullName string `json:"full_name"`
 	CloneUrl string `json:"clone_url"`
-	Private  bool
+	Url      string `json:"url"`
+	Private  bool   `json:"private"`
 }
 
 type GithubSender struct {
 	Login string
+}
+
+type User struct {
+	Name  string
+	Email string
 }
 
 type GithubPushEvent struct {
@@ -197,10 +203,13 @@ type GithubPushEvent struct {
 	Before string
 	After  string
 
-	Pusher struct {
-		Name  string
-		Email string
-	}
+	Pusher User
+
+	HeadCommit struct {
+		Id        string
+		Author    User
+		Committer User
+	} `json:"head_commit"`
 }
 
 func githubEventHandler(w http.ResponseWriter, req *http.Request) {
@@ -321,6 +330,8 @@ func githubPushHandler(ev *GithubPushEvent) error {
 	if config.EmailFormat != "" {
 		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.EmailFormat))
 	}
+	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s <notifications@commit-emails.xyz>", ev.HeadCommit.Committer.Name))
+	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/%%(id)s", ev.Repository.Url))
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
 	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", ev.Before, ev.After, ev.Ref)))
 	cmd.Stdin = stdin
