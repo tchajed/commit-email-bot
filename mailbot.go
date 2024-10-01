@@ -203,6 +203,8 @@ func getConfig(gitRepo string) (config CommitEmailConfig, err error) {
 	return
 }
 
+type eventKey string
+
 func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request) {
 	payload, err := github.ValidatePayload(req, cfg.WebhookSecret)
 	if err != nil {
@@ -218,7 +220,11 @@ func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request)
 		_, _ = w.Write([]byte("Pong"))
 		return
 	case *github.PushEvent:
-		err := githubPushHandler(cfg, context.TODO(), event)
+		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+		defer cancel()
+		ctx = context.WithValue(ctx, eventKey("installation"), *event.Installation.ID)
+		ctx = context.WithValue(ctx, eventKey("repo"), *event.Repo.FullName)
+		err := githubPushHandler(cfg, ctx, event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
