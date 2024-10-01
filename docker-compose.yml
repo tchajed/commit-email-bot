@@ -6,7 +6,8 @@ services:
       - "80:80"
       - "443:8888"
     volumes:
-      - ./persist:/app/persist
+      - ${PERSIST_LOCAL_PATH:-./persist}:/app/persist
     environment:
-      TLS_HOSTNAME: commit-emails.xyz
+      TLS_HOSTNAME: ${TLS_HOSTNAME:-commit-emails.xyz}
       DOTENV_PRIVATE_KEY_PRODUCTION: $DOTENV_PRIVATE_KEY_PRODUCTION
+      PERSIST_PATH: /app/persist

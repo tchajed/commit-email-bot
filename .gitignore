@@ -1,5 +1,7 @@
+# dotenvx private key
+.env.keys
+persist/
 # compiled binary
 commit-emails-bot
 .venv/
-persist/
-.env.keys
+.env

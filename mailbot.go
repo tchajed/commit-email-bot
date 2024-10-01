@@ -16,6 +16,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -35,6 +36,16 @@ type AppConfig struct {
 	AppPrivateKey []byte
 }
 
+// If dotenvx is not used, an environment variable might still be encrypted.
+// Treat this as if the environment variable wasn't passed.
+func getEncryptedEnv(varName string) string {
+	raw := os.Getenv(varName)
+	if strings.HasPrefix(raw, "encrypted:") {
+		return ""
+	}
+	return raw
+}
+
 func NewAppConfig() AppConfig {
 	config := AppConfig{}
 
@@ -43,19 +54,23 @@ func NewAppConfig() AppConfig {
 		config.Hostname = "localhost"
 	}
 	config.PersistPath = os.Getenv("PERSIST_PATH")
+	if config.PersistPath == "" {
+		config.PersistPath = "persist"
+	}
 	config.Port = "https"
-	config.WebhookSecret = []byte(os.Getenv("WEBHOOK_SECRET"))
-	config.SmtpPassword = os.Getenv("MAIL_SMTP_PASSWORD")
-	appIdStr := os.Getenv("GITHUB_APP_ID")
-	if appIdStr == "" {
-		appIdStr = "0"
-	}
+	config.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
+	config.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
+
 	var err error
-	config.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
-	if err != nil {
-		log.Fatalf("GITHUB_APP_ID is not a number: %v", err)
+	appIdStr := getEncryptedEnv("GITHUB_APP_ID")
+	if appIdStr != "" {
+		config.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
+		if err != nil {
+			log.Fatalf("GITHUB_APP_ID is not a number, got %s", appIdStr)
+		}
 	}
-	keyEncoded := os.Getenv("GITHUB_APP_PRIVATE_KEY")
+
+	keyEncoded := getEncryptedEnv("GITHUB_APP_PRIVATE_KEY")
 	if keyEncoded != "" {
 		// base64 decode
 		config.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
