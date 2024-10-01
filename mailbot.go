@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/exec"
@@ -87,8 +88,6 @@ func (c AppConfig) Insecure() bool {
 //go:embed index.html
 var indexHTML []byte
 
-var errorLog *log.Logger
-
 func main() {
 	config := NewAppConfig()
 	flag.StringVar(&config.Hostname, "hostname", config.Hostname, "tls hostname (use localhost to disable https)")
@@ -99,13 +98,16 @@ func main() {
 	if err := os.MkdirAll(config.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
-	errorLogPath := filepath.Join(config.PersistPath, "errors.log")
-	errorFile, err := os.OpenFile(errorLogPath, os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+	logFile, err := os.OpenFile(
+		filepath.Join(config.PersistPath, "commit-email-bot.log"),
+		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatalf("could not create log file: %v", err)
 	}
-	defer errorFile.Close()
-	errorLog = log.New(errorFile, "", log.LstdFlags|log.LUTC|log.Lshortfile)
+	defer logFile.Close()
+	handler := slog.NewJSONHandler(logFile, nil)
+	logger := slog.New(handler)
+	slog.SetDefault(logger)
 
 	tlsKeysDir := filepath.Join(config.PersistPath, "tls_keys")
 	certManager := autocert.Manager{
@@ -141,7 +143,10 @@ func main() {
 
 		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
 
-		ErrorLog: errorLog,
+		ErrorLog: slog.NewLogLogger(
+			handler.WithAttrs([]slog.Attr{slog.String("source", "http")}),
+			slog.LevelError,
+		),
 
 		ReadTimeout:  10 * time.Second,
 		WriteTimeout: 360 * time.Second,
@@ -153,13 +158,13 @@ func main() {
 	shutdownDone := make(chan struct{})
 	go func() {
 		<-sigChan
-		log.Printf("Shutting down...")
+		fmt.Println("Shutting down...")
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 
 		err := httpServer.Shutdown(ctx)
 		if err != nil {
-			log.Printf("HTTP server shutdown with error: %s", err)
+			slog.Error("http server shutdown", slog.String("error", err.Error()))
 		}
 		close(shutdownDone)
 	}()
@@ -202,13 +207,21 @@ func githubEventHandler(cfg AppConfig, w http.ResponseWriter, req *http.Request)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			errorLog.Println(err)
+			slog.Error("push handler", slog.String("error", err.Error()))
 			return
 		}
 		_, _ = w.Write([]byte("OK"))
-		log.Printf("%s: push success: %s %s -> %s", *event.Repo.FullName, *event.Ref, (*event.Before)[:8], (*event.After)[:8])
+		before := (*event.Before)[:8]
+		after := (*event.After)[:8]
+		slog.Info("push success",
+			slog.String("repo", *event.Repo.FullName),
+			slog.String("ref change", fmt.Sprintf("%s: %s -> %s", *event.Ref, before, after)),
+		)
 	case *github.InstallationEvent:
-		log.Printf("installation %s by %s", *event.Action, *event.Installation.Account.Login)
+		slog.Info("installation",
+			slog.String("action", *event.Action),
+			slog.String("account", *event.Installation.Account.Login),
+		)
 		// TODO: check repositories we now have access to for commit-emails.json
 	default:
 	}
@@ -223,7 +236,7 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, ev *github.PushEvent)
 	if err != nil {
 		return err
 	}
-	log.Printf("token: %s", token) // TODO: debugging only
+	fmt.Printf("token: %s\n", token) // TODO: debugging only
 	gitDir := filepath.Join(cfg.PersistPath, "repos", "github.com", *ev.Repo.FullName)
 
 	if err := syncRepo(gitDir, *ev.Repo.CloneURL); err != nil {
@@ -236,7 +249,6 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, ev *github.PushEvent)
 	}
 	config, err := getConfig(gitDir)
 	if err != nil {
-		log.Printf("no commit-emails.json found for %s: %s", *ev.Repo.FullName, err)
 		return fmt.Errorf("no commit-emails.json found for %s: %s", *ev.Repo.FullName, err)
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.mailingList=%s", config.MailingList))
