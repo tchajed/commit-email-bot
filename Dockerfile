@@ -15,14 +15,18 @@ RUN set -eux; \
   apt-get clean; \
   rm -rf /var/lib/apt/lists/*
 
-# Install dotenvx
-RUN curl -sfS https://dotenvx.sh/install.sh | sh
-COPY .env.production ./
+# cache this installation first
+COPY requirements.txt ./
+RUN pip3 install -r requirements.txt
+
+COPY git_multimail_wrapper.py git-multimail.config ./
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
-COPY git_multimail_wrapper.py git-multimail.config requirements.txt ./
-RUN pip3 install -r requirements.txt
+
+# Install dotenvx
+RUN curl -sfS https://dotenvx.sh/install.sh | sh
+COPY .env.production ./
 
 EXPOSE 8888
 EXPOSE 80
