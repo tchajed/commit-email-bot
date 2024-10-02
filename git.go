@@ -16,16 +16,15 @@ func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 	return filepath.Join(persistPath, "repos", "github.com", *repo.FullName)
 }
 
+func tokenToCredentialHelper(token string) string {
+	return fmt.Sprintf("!f() { echo username=x-access-token; echo password:\"%s\"; }; f", token)
+}
+
 func tokenToParams(token string) []gitConfigParam {
-	return []gitConfigParam{
-		{
-			Key:   "credential.https://github.com.username",
-			Value: "x-access-token",
-		},
-		{
-			Key:   "http.https://github.com.extraheader",
-			Value: fmt.Sprintf("Authorization: %s", token),
-		}}
+	return []gitConfigParam{{
+		Key:   "credential.helper",
+		Value: tokenToCredentialHelper(token),
+	}}
 }
 
 func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
