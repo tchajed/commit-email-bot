@@ -36,7 +36,7 @@ func parseConfig(configText []byte) (config CommitEmailConfig, err error) {
 
 // getConfig reads the commit-emails.json file for a git repo
 func getConfig(gitRepo string) (config CommitEmailConfig, err error) {
-	configText, err := runGitCmd(gitRepo, "show", "HEAD:.github/commit-emails.json")
+	configText, err := GitShow(gitRepo, "HEAD", ".github/commit-emails.json")
 	if err != nil {
 		return CommitEmailConfig{}, MissingConfigError{}
 	}

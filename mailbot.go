@@ -242,7 +242,7 @@ func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *git
 	}
 	fmt.Printf("token: %s\n", token) // TODO: debugging only
 	client := github.NewClient(&http.Client{Transport: itr})
-	gitDir, err := syncRepo(ctx, client, ev.Repo)
+	gitDir, err := SyncRepo(ctx, client, ev.Repo)
 	if err != nil {
 		if _, ok := err.(MissingConfigError); ok {
 			slog.Info("push to unconfigured repo", slog.String("repo", *ev.Repo.FullName))
