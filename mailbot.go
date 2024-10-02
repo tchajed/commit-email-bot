@@ -37,35 +37,37 @@ type AppConfig struct {
 	AppPrivateKey []byte
 }
 
-// If dotenvx is not used, an environment variable might still be encrypted.
-// Treat this as if the environment variable wasn't passed.
-func getEncryptedEnv(varName string) string {
-	raw := os.Getenv(varName)
-	if strings.HasPrefix(raw, "encrypted:") {
-		return ""
-	}
-	return raw
-}
+var Cfg AppConfig
 
-func NewAppConfig() AppConfig {
-	config := AppConfig{}
+func init() {
+	// If dotenvx is not used, an environment variable might still be encrypted.
+	// Treat this as if the environment variable wasn't passed.
+	getEncryptedEnv := func(varName string) string {
+		raw := os.Getenv(varName)
+		if strings.HasPrefix(raw, "encrypted:") {
+			return ""
+		}
+		return raw
+	}
 
-	config.Hostname = os.Getenv("TLS_HOSTNAME")
-	if config.Hostname == "" {
-		config.Hostname = "localhost"
+	Cfg = AppConfig{}
+
+	Cfg.Hostname = os.Getenv("TLS_HOSTNAME")
+	if Cfg.Hostname == "" {
+		Cfg.Hostname = "localhost"
 	}
-	config.PersistPath = os.Getenv("PERSIST_PATH")
-	if config.PersistPath == "" {
-		config.PersistPath = "persist"
+	Cfg.PersistPath = os.Getenv("PERSIST_PATH")
+	if Cfg.PersistPath == "" {
+		Cfg.PersistPath = "persist"
 	}
-	config.Port = "https"
-	config.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
-	config.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
+	Cfg.Port = "https"
+	Cfg.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
+	Cfg.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
 
 	var err error
 	appIdStr := getEncryptedEnv("GITHUB_APP_ID")
 	if appIdStr != "" {
-		config.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
+		Cfg.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
 		if err != nil {
 			log.Fatalf("GITHUB_APP_ID is not a number, got %s", appIdStr)
 		}
@@ -74,12 +76,11 @@ func NewAppConfig() AppConfig {
 	keyEncoded := getEncryptedEnv("GITHUB_APP_PRIVATE_KEY")
 	if keyEncoded != "" {
 		// base64 decode
-		config.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
+		Cfg.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
 		if err != nil {
 			log.Fatal("private key has invalid base64")
 		}
 	}
-	return config
 }
 
 func (c AppConfig) Insecure() bool {
@@ -90,17 +91,16 @@ func (c AppConfig) Insecure() bool {
 var indexHTML []byte
 
 func main() {
-	config := NewAppConfig()
-	flag.StringVar(&config.Hostname, "hostname", config.Hostname, "tls hostname (use localhost to disable https)")
-	flag.StringVar(&config.PersistPath, "persist", config.PersistPath, "directory for persistent data")
-	flag.StringVar(&config.Port, "port", config.Port, "port to listen on")
+	flag.StringVar(&Cfg.Hostname, "hostname", Cfg.Hostname, "tls hostname (use localhost to disable https)")
+	flag.StringVar(&Cfg.PersistPath, "persist", Cfg.PersistPath, "directory for persistent data")
+	flag.StringVar(&Cfg.Port, "port", Cfg.Port, "port to listen on")
 	flag.Parse()
 
-	if err := os.MkdirAll(config.PersistPath, 0770); err != nil {
+	if err := os.MkdirAll(Cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
 	logFile, err := os.OpenFile(
-		filepath.Join(config.PersistPath, "commit-email-bot.log"),
+		filepath.Join(Cfg.PersistPath, "commit-email-bot.log"),
 		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatalf("could not create log file: %v", err)
@@ -110,18 +110,18 @@ func main() {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	tlsKeysDir := filepath.Join(config.PersistPath, "tls_keys")
+	tlsKeysDir := filepath.Join(Cfg.PersistPath, "tls_keys")
 	certManager := autocert.Manager{
 		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(config.PersistPath, fmt.Sprintf("www.%s", config.Hostname)),
+		HostPolicy: autocert.HostWhitelist(Cfg.PersistPath, fmt.Sprintf("www.%s", Cfg.Hostname)),
 	}
 	// This HTTP handler listens for ACME "http-01" challenges, and redirects
 	// other requests. It's useful for the latter in production in case someone
 	// navigates to the website without https.
 	//
 	// On localhost this makes no sense to run.
-	if config.Insecure() {
+	if Cfg.Insecure() {
 		go func() {
 			err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 			if err != nil {
@@ -136,11 +136,11 @@ func main() {
 		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
-		githubEventHandler(config, ct, w, req)
+		githubEventHandler(ct, w, req)
 	})
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", config.Port),
+		Addr:    fmt.Sprintf(":%s", Cfg.Port),
 		Handler: mux,
 
 		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
@@ -172,9 +172,9 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	fmt.Printf("host %s listening on :%s\n", config.Hostname, config.Port)
+	fmt.Printf("host %s listening on :%s\n", Cfg.Hostname, Cfg.Port)
 	slog.Info("starting server")
-	if config.Insecure() {
+	if Cfg.Insecure() {
 		err = httpServer.ListenAndServe()
 	} else {
 		err = httpServer.ListenAndServeTLS("", "")
@@ -188,8 +188,8 @@ func main() {
 
 type eventKey string
 
-func githubEventHandler(cfg AppConfig, transport http.RoundTripper, w http.ResponseWriter, req *http.Request) {
-	payload, err := github.ValidatePayload(req, cfg.WebhookSecret)
+func githubEventHandler(transport http.RoundTripper, w http.ResponseWriter, req *http.Request) {
+	payload, err := github.ValidatePayload(req, Cfg.WebhookSecret)
 	if err != nil {
 		http.Error(w, "could not validate payload: "+err.Error(), http.StatusBadRequest)
 		return
@@ -207,7 +207,7 @@ func githubEventHandler(cfg AppConfig, transport http.RoundTripper, w http.Respo
 		defer cancel()
 		ctx = context.WithValue(ctx, eventKey("installation"), *event.Installation.ID)
 		ctx = context.WithValue(ctx, eventKey("repo"), *event.Repo.FullName)
-		err := githubPushHandler(cfg, ctx, transport, event)
+		err := githubPushHandler(ctx, transport, event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -231,8 +231,8 @@ func githubEventHandler(cfg AppConfig, transport http.RoundTripper, w http.Respo
 	}
 }
 
-func githubPushHandler(cfg AppConfig, ctx context.Context, transport http.RoundTripper, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(transport, cfg.AppId, *ev.Installation.ID, cfg.AppPrivateKey)
+func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *github.PushEvent) error {
+	itr, err := ghinstallation.New(transport, Cfg.AppId, *ev.Installation.ID, Cfg.AppPrivateKey)
 	if err != nil {
 		return err
 	}
@@ -242,7 +242,7 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, transport http.RoundT
 	}
 	fmt.Printf("token: %s\n", token) // TODO: debugging only
 	client := github.NewClient(&http.Client{Transport: itr})
-	gitDir, err := syncRepo(cfg, ctx, client, ev.Repo)
+	gitDir, err := syncRepo(ctx, client, ev.Repo)
 	if err != nil {
 		if _, ok := err.(MissingConfigError); ok {
 			slog.Info("push to unconfigured repo", slog.String("repo", *ev.Repo.FullName))
@@ -252,7 +252,7 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, transport http.RoundT
 	}
 
 	args := []string{}
-	if cfg.SmtpPassword == "" {
+	if Cfg.SmtpPassword == "" {
 		args = append(args, "--stdout")
 	}
 	config, err := getConfig(gitDir)
@@ -278,7 +278,7 @@ func githubPushHandler(cfg AppConfig, ctx context.Context, transport http.RoundT
 	// line with -c since other processes can read that.
 	//
 	// Single quotes are necessary for git to parse this correctly.
-	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", cfg.SmtpPassword))
+	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", Cfg.SmtpPassword))
 	_, err = cmd.Output()
 	if err == nil {
 		return nil

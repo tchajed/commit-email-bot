@@ -15,7 +15,7 @@ func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 	return filepath.Join(persistPath, "repos", "github.com", *repo.FullName)
 }
 
-func syncRepo(cfg AppConfig, ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
+func syncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
 	_, _, _, err = client.Repositories.GetContents(ctx, *repo.Owner.Login, *repo.Name, ".github/commit-emails.json", nil)
 	if err != nil {
 		if _, ok := err.(*github.RateLimitError); ok {
@@ -27,7 +27,7 @@ func syncRepo(cfg AppConfig, ctx context.Context, client *github.Client, repo *g
 		// TODO: only do this for 404
 		return "", MissingConfigError{}
 	}
-	gitDir = repoGitDir(cfg.PersistPath, repo)
+	gitDir = repoGitDir(Cfg.PersistPath, repo)
 	fi, err := os.Stat(gitDir)
 	if os.IsNotExist(err) {
 		err := gitClone(*repo.CloneURL, gitDir)
