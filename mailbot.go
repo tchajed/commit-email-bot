@@ -31,6 +31,7 @@ type AppConfig struct {
 	PersistPath string
 	Port        string
 
+	EmailStdout   bool
 	WebhookSecret []byte
 	SmtpPassword  string
 	AppId         int64
@@ -63,6 +64,10 @@ func init() {
 	Cfg.Port = "https"
 	Cfg.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
 	Cfg.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
+	emailStdout := os.Getenv("EMAIL_STDOUT")
+	if emailStdout == "true" || emailStdout == "1" {
+		Cfg.EmailStdout = true
+	}
 
 	var err error
 	appIdStr := getEncryptedEnv("GITHUB_APP_ID")
@@ -95,6 +100,10 @@ func main() {
 	flag.StringVar(&Cfg.PersistPath, "persist", Cfg.PersistPath, "directory for persistent data")
 	flag.StringVar(&Cfg.Port, "port", Cfg.Port, "port to listen on")
 	flag.Parse()
+
+	if Cfg.EmailStdout {
+		Cfg.SmtpPassword = ""
+	}
 
 	if err := os.MkdirAll(Cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
