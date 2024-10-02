@@ -17,7 +17,7 @@ func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 }
 
 func tokenToCredentialHelper(token string) string {
-	return fmt.Sprintf("!f() { echo username=x-access-token; echo password:\"%s\"; }; f", token)
+	return fmt.Sprintf("!f() { echo username=x-access-token; echo password=%s; }; f", token)
 }
 
 func tokenToParams(token string) []gitConfigParam {
