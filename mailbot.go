@@ -248,11 +248,6 @@ func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *git
 	if err != nil {
 		return err
 	}
-	token, err := itr.Token(ctx)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("token: %s\n", token) // TODO: debugging only
 	client := github.NewClient(&http.Client{Transport: itr})
 	gitDir, err := SyncRepo(ctx, client, ev.Repo)
 	if err != nil {
