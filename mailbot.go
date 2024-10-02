@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	_ "embed"
 	"encoding/base64"
+	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -191,8 +192,8 @@ func main() {
 	} else {
 		err = httpServer.ListenAndServeTLS("", "")
 	}
-	if err != nil {
-		log.Printf("http listen: %s", err)
+	if err != nil && !errors.Is(err, http.ErrServerClosed) {
+		slog.Warn("http listen: %s", err)
 	}
 
 	<-shutdownDone
