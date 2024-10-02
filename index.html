@@ -5,7 +5,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>Commit Emails</title>
+<title>Commit Email Bot</title>
 
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300italic,700,700italic">
 <link rel="stylesheet" href="https://cdn.rawgit.com/necolas/normalize.css/master/normalize.css">
@@ -25,7 +25,7 @@ body {
 <h1>Commit Email Bot</h1>
 
 <p>
-commit-email-bot sends emails when changes are pushed to a Git repository on Github.
+commit-email-bot sends emails when changes are pushed to a git repository on GitHub. It sends one email per commit, with the diff in the body.
 </p>
 
 <h2>Getting Started</h2>
@@ -41,7 +41,11 @@ commit-email-bot sends emails when changes are pushed to a Git repository on Git
 }
 </code></pre>
 
-<p>Every email from commit-email-bot contains the string <tt>jD27HVpTX3tELRBjcpGsK6io7</tt> followed by the name of the repo. You can use this to easily filter commit notifications in Gmail.</p>
+<p>You can optionally specify "emailFormat" as "html" (the default) or "text".</p>
+
+<p>Every email from commit-email-bot contains the string <code>jD27HVpTX3tELRBjcpGsK6io7</code> followed by the name of the repo. You can use this to easily filter commit notifications in Gmail.</p>
+
+<p><small><a href="https://github.com/tchajed/commit-email-bot">GitHub source</a></small></p>
 
 </body>
 </html>
