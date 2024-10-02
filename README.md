@@ -31,9 +31,10 @@ Before release:
 
 Eventually:
 - Use the GitHub API to fetch diffs and format them using pygments or shiki. This would avoid cloning the repo (the
-  major source of state) and remove the dependency on git_multimail.py
-  - Syntax highlight within diffs
-  - Allow filtering based on file path
+  major source of state) and remove the dependency on git_multimail.py, as well as enable other features.
+  - Add syntax highlight within diffs
+  - Improve the linking to GitHub
+  - Allow filtering emails based on file path
 - Clean up old cloned repos to free up space.
 - Upgrade to a paid Mailgun account to support a wider audience.
 
