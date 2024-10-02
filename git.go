@@ -16,8 +16,20 @@ func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 	return filepath.Join(persistPath, "repos", "github.com", *repo.FullName)
 }
 
+// We authenticate to GitHub using an installation access token, acting as the
+// bot itself (not the user). The documentation suggests to do this with the URL
+// https://x-access-token:<token>@github.com/owner/repo.git, but this would
+// store that URL in the git config in plaintext. The tokens are valid for 1
+// hour, which is still a lot of exposure.
+//
+// Passing credentials via configuration, which we can pass by environment
+// variable, is a bit tricky, but git provides a "credential helper" which is a
+// program that gets credentials. We set that helper to a bash script that
+// echoes the constant token as the password (and a dummy username, which is
+// required), then pass it via the environment using git's GIT_CONFIG_*
+// variables (see runGitCmd)
 func tokenToCredentialHelper(token string) string {
-	return fmt.Sprintf("!f() { echo username=x-access-token; echo password=%s; }; f", token)
+	return fmt.Sprintf("!f() { echo \"username=x-access-token\"; echo \"password=%s\"; }; f", token)
 }
 
 func tokenToParams(token string) []gitConfigParam {
@@ -93,6 +105,10 @@ func runGitCmd(gitDir string, params []gitConfigParam, args ...string) ([]byte, 
 	cmd := exec.Command("git", args...)
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "GIT_DIR="+gitDir)
+	// GIT_CONFIG_COUNT, GIT_CONFIG_KEY_<n>, GIT_CONFIG_VALUE_<n>, ... are a
+	// feature to pass configuration options by environment variables. There's
+	// also GIT_CONFIG_PARAMETERS, but it's hard to encode arbitrary values with
+	// spaces in that.
 	cmd.Env = append(cmd.Env, fmt.Sprintf("GIT_CONFIG_COUNT=%d", len(params)))
 	for i, p := range params {
 		cmd.Env = append(cmd.Env,
