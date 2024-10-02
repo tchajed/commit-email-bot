@@ -172,6 +172,9 @@ func main() {
 		close(shutdownDone)
 	}()
 
+	if Cfg.SmtpPassword == "" {
+		fmt.Println("sending emails to stdout")
+	}
 	fmt.Printf("host %s listening on :%s\n", Cfg.Hostname, Cfg.Port)
 	slog.Info("starting server")
 	if Cfg.Insecure() {

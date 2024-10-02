@@ -8,11 +8,19 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v62/github"
 )
 
 func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 	return filepath.Join(persistPath, "repos", "github.com", *repo.FullName)
+}
+
+func tokenToParams(token string) []gitConfigParam {
+	return []gitConfigParam{{
+		Key:   "http.https://github.com.extraheader",
+		Value: fmt.Sprintf("Authorization: %s", token),
+	}}
 }
 
 func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
@@ -27,10 +35,18 @@ func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEvent
 		// TODO: only do this for 404
 		return "", MissingConfigError{}
 	}
+
+	itr := client.Client().Transport.(*ghinstallation.Transport)
+	token, err := itr.Token(ctx)
+	if err != nil {
+		return "", err
+	}
+	params := tokenToParams(token)
+
 	gitDir = repoGitDir(Cfg.PersistPath, repo)
 	fi, err := os.Stat(gitDir)
 	if os.IsNotExist(err) {
-		err := gitClone(*repo.CloneURL, gitDir)
+		err := gitClone(*repo.CloneURL, gitDir, params)
 		if err != nil {
 			return "", err
 		}
@@ -41,7 +57,7 @@ func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEvent
 		return "", fmt.Errorf("%s exists and is not a directory", gitDir)
 	}
 
-	err = gitFetch(gitDir)
+	err = gitFetch(gitDir, params)
 	if err != nil {
 		return
 	}
@@ -58,12 +74,12 @@ type gitConfigParam struct {
 	Value string
 }
 
-func gitClone(url string, dest string, params ...gitConfigParam) error {
+func gitClone(url string, dest string, params []gitConfigParam) error {
 	_, err := runGitCmd(dest, params, "clone", "--bare", "--quiet", url, dest)
 	return err
 }
 
-func gitFetch(gitDir string, params ...gitConfigParam) error {
+func gitFetch(gitDir string, params []gitConfigParam) error {
 	_, err := runGitCmd(gitDir, params, "fetch", "--quiet", "--force", "origin", "*:*")
 	return err
 }
