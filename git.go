@@ -17,10 +17,15 @@ func repoGitDir(persistPath string, repo *github.PushEventRepository) string {
 }
 
 func tokenToParams(token string) []gitConfigParam {
-	return []gitConfigParam{{
-		Key:   "http.https://github.com.extraheader",
-		Value: fmt.Sprintf("Authorization: %s", token),
-	}}
+	return []gitConfigParam{
+		{
+			Key:   "credential.https://github.com.username",
+			Value: "x-access-token",
+		},
+		{
+			Key:   "http.https://github.com.extraheader",
+			Value: fmt.Sprintf("Authorization: %s", token),
+		}}
 }
 
 func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
@@ -36,6 +41,7 @@ func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEvent
 		return "", MissingConfigError{}
 	}
 
+	// TODO: might not want to authenticate for public repos
 	itr := client.Client().Transport.(*ghinstallation.Transport)
 	token, err := itr.Token(ctx)
 	if err != nil {

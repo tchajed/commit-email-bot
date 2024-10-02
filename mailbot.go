@@ -291,8 +291,9 @@ func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *git
 	//
 	// Single quotes are necessary for git to parse this correctly.
 	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", Cfg.SmtpPassword))
-	_, err = cmd.Output()
+	output, err := cmd.Output()
 	if err == nil {
+		fmt.Println(output)
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {
