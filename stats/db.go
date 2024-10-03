@@ -13,7 +13,7 @@ type Database struct {
 }
 
 func New(persistPath string) (Database, error) {
-	db, err := sql.Open("sqlite3", filepath.Join(persistPath, "stats.sqlite3"))
+	db, err := sql.Open("sqlite3", filepath.Join(persistPath, "db.sqlite3"))
 	if err != nil {
 		return Database{nil}, err
 	}
