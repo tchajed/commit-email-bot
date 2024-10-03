@@ -10,6 +10,7 @@ In your repo, commit a file called `.github/commit-emails.toml` that specifies t
 
 ```toml
 to = "alice@example.com,bob@example.net"
+
 [email]
 format = "html"
 ```
