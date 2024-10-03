@@ -6,13 +6,12 @@ commit-email-bot sends emails when changes are pushed to a Git repository on Git
 
 [Install the commit-emails GitHub app](https://github.com/apps/commit-emails)
 
-In your repo, commit a file called `.github/commit-emails.json` that specifies the recipients and the format of the emails (html or text):
+In your repo, commit a file called `.github/commit-emails.toml` that specifies the recipients and the format of the emails (the default is html, text is also supported)
 
-```
-{
-  "emailFormat": "html",
-  "commitList": "alice@example.com,bob@example.net"
-}
+```toml
+to = "alice@example.com,bob@example.net"
+[email]
+format = "html"
 ```
 
 Every email from commit-email-bot contains the string `jD27HVpTX3tELRBjcpGsK6io7` followed by the name of the repo. You can use this to easily filter commit emails in Gmail.
@@ -27,7 +26,6 @@ A 512MB virtual machine runs out of memory when building, but not when running, 
 
 Before release:
 - Create a logo.
-- Switch the config format to TOML.
 
 Eventually:
 - Use the GitHub API to fetch diffs and format them using pygments or shiki. This would avoid cloning the repo (the

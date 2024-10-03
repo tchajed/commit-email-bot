@@ -239,7 +239,7 @@ func githubEventHandler(transport http.RoundTripper, w http.ResponseWriter, req 
 			slog.String("action", *event.Action),
 			slog.String("account", *event.Installation.Account.Login),
 		)
-		// TODO: check repositories we now have access to for commit-emails.json
+		// TODO: store some stats in a persistent database
 	default:
 	}
 }
@@ -265,11 +265,11 @@ func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *git
 	}
 	config, err := getConfig(gitDir)
 	if err != nil {
-		return fmt.Errorf("no commit-emails.json found for %s: %s", *ev.Repo.FullName, err)
+		return fmt.Errorf("no commit-emails.toml found for %s: %s", *ev.Repo.FullName, err)
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.mailingList=%s", config.MailingList))
-	if config.EmailFormat != "" {
-		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.EmailFormat))
+	if config.Email.Format != "" {
+		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.Email.Format))
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s <notifications@commit-emails.xyz>", *ev.HeadCommit.Committer.Name))
 	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", *ev.Repo.HTMLURL))
