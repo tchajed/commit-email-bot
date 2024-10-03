@@ -41,17 +41,29 @@ func New(persistPath string) (Database, error) {
 }
 
 func (db Database) AddInstallation(event *github.InstallationEvent) {
-	selection := event.GetInstallation().GetRepositorySelection() == "selected"
-	_, err := db.conn.Exec(`insert or replace into installations
+	action := event.GetAction()
+	if action == "created" || action == "new_permissions_accepted" {
+		selection := event.GetInstallation().GetRepositorySelection() == "selected"
+		_, err := db.conn.Exec(`insert or replace into installations
 	(installation_id, account, repository_selection, num_repos)
 values (?, ?, ?, ?, ?, ?) `,
-		event.GetInstallation().GetID(),
-		event.GetInstallation().GetAccount().GetLogin(),
-		selection,
-		len(event.Repositories),
-	)
-	if err != nil {
-		slog.Warn("stats db error", slog.String("err", err.Error()), slog.String("table", "installations"))
+			event.GetInstallation().GetID(),
+			event.GetInstallation().GetAccount().GetLogin(),
+			selection,
+			len(event.Repositories),
+		)
+		if err != nil {
+			slog.Warn("stats db error", slog.String("err", err.Error()), slog.String("table", "installations"))
+		}
+		return
+	}
+	if action == "deleted" {
+		_, err := db.conn.Exec(`delete from installations where installation_id = ?`, event.GetInstallation().GetID())
+		if err != nil {
+			slog.Error("stats db error",
+				slog.String("table", "installations"),
+				slog.String("action", "delete"))
+		}
 	}
 }
 
