@@ -46,7 +46,7 @@ func (db Database) AddInstallation(event *github.InstallationEvent) {
 		selection := event.GetInstallation().GetRepositorySelection() == "selected"
 		_, err := db.conn.Exec(`insert or replace into installations
 	(installation_id, account, repository_selection, num_repos)
-values (?, ?, ?, ?, ?, ?) `,
+values (?, ?, ?, ?) `,
 			event.GetInstallation().GetID(),
 			event.GetInstallation().GetAccount().GetLogin(),
 			selection,
@@ -58,7 +58,10 @@ values (?, ?, ?, ?, ?, ?) `,
 		return
 	}
 	if action == "deleted" {
-		_, err := db.conn.Exec(`delete from installations where installation_id = ?`, event.GetInstallation().GetID())
+		_, err := db.conn.Exec(`delete from installations
+where installation_id = ?`,
+			event.GetInstallation().GetID(),
+		)
 		if err != nil {
 			slog.Error("stats db error",
 				slog.String("table", "installations"),
