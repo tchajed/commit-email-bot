@@ -96,6 +96,18 @@ func (c AppConfig) Insecure() bool {
 //go:embed index.html
 var indexHTML []byte
 
+// Server tracks state for the running in-memory server
+type Server struct {
+	transport http.RoundTripper
+}
+
+// PushHandler tracks state for a single push handler
+type PushHandler struct {
+	srv          Server
+	installation int64
+	repo         string
+}
+
 func main() {
 	flag.StringVar(&Cfg.Hostname, "hostname", Cfg.Hostname, "tls hostname (use localhost to disable https)")
 	flag.StringVar(&Cfg.PersistPath, "persist", Cfg.PersistPath, "directory for persistent data")
@@ -141,12 +153,15 @@ func main() {
 	}
 
 	ct := httpcache.NewMemoryCacheTransport()
+	srv := Server{
+		transport: ct,
+	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
-		githubEventHandler(ct, w, req)
+		srv.githubEventHandler(w, req)
 	})
 
 	httpServer := &http.Server{
@@ -199,9 +214,7 @@ func main() {
 	<-shutdownDone
 }
 
-type eventKey string
-
-func githubEventHandler(transport http.RoundTripper, w http.ResponseWriter, req *http.Request) {
+func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	payload, err := github.ValidatePayload(req, Cfg.WebhookSecret)
 	if err != nil {
 		http.Error(w, "could not validate payload: "+err.Error(), http.StatusBadRequest)
@@ -218,9 +231,11 @@ func githubEventHandler(transport http.RoundTripper, w http.ResponseWriter, req 
 	case *github.PushEvent:
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
-		ctx = context.WithValue(ctx, eventKey("installation"), *event.Installation.ID)
-		ctx = context.WithValue(ctx, eventKey("repo"), *event.Repo.FullName)
-		err := githubPushHandler(ctx, transport, event)
+		err := PushHandler{
+			srv:          srv,
+			installation: *event.Installation.ID,
+			repo:         *event.Repo.FullName,
+		}.githubPushHandler(ctx, event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
@@ -244,8 +259,8 @@ func githubEventHandler(transport http.RoundTripper, w http.ResponseWriter, req 
 	}
 }
 
-func githubPushHandler(ctx context.Context, transport http.RoundTripper, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(transport, Cfg.AppId, *ev.Installation.ID, Cfg.AppPrivateKey)
+func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
+	itr, err := ghinstallation.New(h.srv.transport, Cfg.AppId, *ev.Installation.ID, Cfg.AppPrivateKey)
 	if err != nil {
 		return err
 	}
