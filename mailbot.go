@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"crypto/tls"
@@ -38,9 +39,15 @@ type AppConfig struct {
 	SmtpPassword  string
 	AppId         int64
 	AppPrivateKey []byte
+
+	DenyAccounts map[string]bool
 }
 
 var Cfg AppConfig
+
+func (cfg AppConfig) Denied(account string) bool {
+	return cfg.DenyAccounts[account]
+}
 
 func init() {
 	// If dotenvx is not used, an environment variable might still be encrypted.
@@ -110,6 +117,20 @@ type PushHandler struct {
 	repo         string
 }
 
+func openDenyAccounts(path string) map[string]bool {
+	f, err := os.OpenFile(path, os.O_RDONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Fatalf("could not open deny file: %v", err)
+	}
+	deny := make(map[string]bool)
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		deny[scanner.Text()] = true
+	}
+	defer f.Close()
+	return deny
+}
+
 func main() {
 	flag.StringVar(&Cfg.Hostname, "hostname", Cfg.Hostname, "tls hostname (use localhost to disable https)")
 	flag.StringVar(&Cfg.PersistPath, "persist", Cfg.PersistPath, "directory for persistent data")
@@ -123,6 +144,9 @@ func main() {
 	if err := os.MkdirAll(Cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
+
+	Cfg.DenyAccounts = openDenyAccounts(filepath.Join(Cfg.PersistPath, "deny-accounts.txt"))
+
 	logFile, err := os.OpenFile(
 		filepath.Join(Cfg.PersistPath, "commit-email-bot.log"),
 		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
@@ -236,6 +260,15 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		_, _ = w.Write([]byte("Pong"))
 		return
 	case *github.PushEvent:
+		account := event.GetRepo().GetOwner().GetLogin()
+		if account == "" {
+			account = event.GetRepo().GetOrganization()
+		}
+		if Cfg.Denied(account) {
+			slog.Info("denied push", slog.String("account", account))
+			http.Error(w, "account denied", http.StatusForbidden)
+			return
+		}
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
 		repo := event.GetRepo().GetFullName()
