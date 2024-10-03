@@ -99,7 +99,7 @@ func init() {
 
 	hash := sha1.New()
 	hash.Write(indexHTML)
-	indexEtag = fmt.Sprintf("%x", hash.Sum(nil))[:16]
+	indexHtmlHash = fmt.Sprintf("%x", hash.Sum(nil))[:16]
 }
 
 func (c AppConfig) Insecure() bool {
@@ -108,7 +108,7 @@ func (c AppConfig) Insecure() bool {
 
 //go:embed index.html
 var indexHTML []byte
-var indexEtag string
+var indexHtmlHash string
 
 // Server tracks state for the running in-memory server
 type Server struct {
@@ -196,7 +196,7 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=600")
-		w.Header().Set("Etag", indexEtag)
+		w.Header().Set("ETag", fmt.Sprintf("\"%s\"", indexHtmlHash))
 		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
