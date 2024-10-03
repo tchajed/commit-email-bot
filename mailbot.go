@@ -231,28 +231,31 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	case *github.PushEvent:
 		ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 		defer cancel()
+		repo := event.GetRepo().GetFullName()
 		err := PushHandler{
 			srv:          srv,
-			installation: *event.Installation.ID,
-			repo:         *event.Repo.FullName,
+			installation: event.GetInstallation().GetID(),
+			repo:         repo,
 		}.githubPushHandler(ctx, event)
 		if err != nil {
 			err = fmt.Errorf("push handler failed: %s", err)
 			http.Error(w, err.Error(), http.StatusBadRequest)
-			slog.Error("push handler", slog.String("error", err.Error()))
+			slog.Error("push handler",
+				slog.String("error", err.Error()),
+				slog.String("repo", repo))
 			return
 		}
 		_, _ = w.Write([]byte("OK"))
 		before := (*event.Before)[:8]
 		after := (*event.After)[:8]
 		slog.Info("push success",
-			slog.String("repo", *event.Repo.FullName),
-			slog.String("ref change", fmt.Sprintf("%s: %s -> %s", *event.Ref, before, after)),
+			slog.String("repo", repo),
+			slog.String("ref change", fmt.Sprintf("%s: %s -> %s", event.GetRef(), before, after)),
 		)
 	case *github.InstallationEvent:
 		slog.Info("installation",
-			slog.String("action", *event.Action),
-			slog.String("account", *event.Installation.Account.Login),
+			slog.String("action", event.GetAction()),
+			slog.String("account", event.GetInstallation().GetAccount().GetLogin()),
 		)
 		// TODO: store some stats in a persistent database
 	default:
@@ -268,7 +271,7 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	gitDir, err := SyncRepo(ctx, client, ev.Repo)
 	if err != nil {
 		if _, ok := err.(MissingConfigError); ok {
-			slog.Info("push to unconfigured repo", slog.String("repo", *ev.Repo.FullName))
+			slog.Info("push to unconfigured repo", slog.String("repo", h.repo))
 			return nil
 		}
 		return err
@@ -280,7 +283,7 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	}
 	config, err := getConfig(gitDir)
 	if err != nil {
-		return fmt.Errorf("no commit-emails.toml found for %s: %s", *ev.Repo.FullName, err)
+		return fmt.Errorf("could not get config for %s: %s", h.repo, err)
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.mailingList=%s", config.MailingList))
 	if config.Email.Format != "" {
