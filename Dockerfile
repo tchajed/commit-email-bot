@@ -1,10 +1,12 @@
 # syntax=docker/dockerfile:1
 # https://www.docker.com/blog/containerize-your-go-developer-environment-part-2/
-FROM golang:1.23-alpine AS build
+# NOTE: not using the golang alpine image since we need cgo for sqlite3. It doesn't matter much since this image is only
+# used during the build; the running container is the Python one.
+FROM golang:1.23 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY *.go index.html ./
+COPY . ./
 RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
 
 FROM python:3.12-slim

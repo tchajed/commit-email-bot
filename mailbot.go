@@ -9,6 +9,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"github.com/tchajed/commit-emails-bot/stats"
 	"log"
 	"log/slog"
 	"net/http"
@@ -99,6 +100,7 @@ var indexHTML []byte
 // Server tracks state for the running in-memory server
 type Server struct {
 	transport http.RoundTripper
+	db        stats.Database
 }
 
 // PushHandler tracks state for a single push handler
@@ -153,8 +155,13 @@ func main() {
 	}
 
 	ct := httpcache.NewMemoryCacheTransport()
+	db, err := stats.New(Cfg.PersistPath)
+	if err != nil {
+		log.Fatalf("could not open database: %v", err)
+	}
 	srv := Server{
 		transport: ct,
+		db:        db,
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
@@ -245,6 +252,7 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 				slog.String("repo", repo))
 			return
 		}
+		srv.db.AddPush(event)
 		_, _ = w.Write([]byte("OK"))
 		before := (*event.Before)[:8]
 		after := (*event.After)[:8]
@@ -257,7 +265,13 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 			slog.String("action", event.GetAction()),
 			slog.String("account", event.GetInstallation().GetAccount().GetLogin()),
 		)
-		// TODO: store some stats in a persistent database
+		srv.db.AddInstallation(event)
+	case *github.InstallationRepositoriesEvent:
+		slog.Info("installation",
+			slog.String("action", event.GetAction()),
+			slog.String("account", event.GetInstallation().GetAccount().GetLogin()),
+		)
+		srv.db.UpdateInstallation(event)
 	default:
 	}
 }
