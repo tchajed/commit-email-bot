@@ -189,6 +189,7 @@ func main() {
 	}
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=600")
 		_, _ = w.Write(indexHTML)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
