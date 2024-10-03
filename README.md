@@ -25,10 +25,6 @@ A 512MB virtual machine runs out of memory when building, but not when running, 
 
 ## Future work
 
-Before release:
-- Create a logo.
-
-Eventually:
 - Use the GitHub API to fetch diffs and format them using pygments or shiki. This would avoid cloning the repo (the
   major source of state) and remove the dependency on git_multimail.py, as well as enable other features.
   - Add syntax highlight within diffs
