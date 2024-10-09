@@ -46,6 +46,10 @@ git_multimail.LINK_HTML_TEMPLATE = """\
 <p><a href="%(browse_url)s">View this commit on GitHub</a>.</p>
 """
 
+git_multimail.COMBINED_REFCHANGE_REVISION_SUBJECT_TEMPLATE = (
+    '%(emailprefix) %(short_refname)s: %(oneline)s'
+)
+
 
 if __name__ == "__main__":
     git_multimail.main(sys.argv[1:])
