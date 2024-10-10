@@ -47,7 +47,7 @@ git_multimail.LINK_HTML_TEMPLATE = """\
 """
 
 git_multimail.COMBINED_REFCHANGE_REVISION_SUBJECT_TEMPLATE = (
-    '%(emailprefix) %(short_refname)s: %(oneline)s'
+    '%(emailprefix)s %(short_refname)s: %(oneline)s'
 )
 
 
