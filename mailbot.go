@@ -340,9 +340,11 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s <notifications@commit-emails.xyz>", *ev.HeadCommit.Committer.Name))
 	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", *ev.Repo.HTMLURL))
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
-	stdin := bytes.NewReader([]byte(fmt.Sprintf("%s %s %s", *ev.Before, *ev.After, *ev.Ref)))
+	commitLine := fmt.Sprintf("%s %s %s", *ev.Before, *ev.After, *ev.Ref)
+	stdin := bytes.NewReader([]byte(commitLine))
 	cmd.Stdin = stdin
-	cmd.Stderr = os.Stderr
+	stderrBuf := &bytes.Buffer{}
+	cmd.Stderr = stderrBuf
 	cmd.Env = os.Environ()
 	cmd.Env = append(cmd.Env, "GIT_DIR="+gitDir)
 	// constants that configure git_multimail
@@ -355,11 +357,14 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", Cfg.SmtpPassword))
 	output, err := cmd.Output()
 	if err == nil {
-		fmt.Println(string(output))
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {
-		return fmt.Errorf("git_multimail_wrapper.py failed: %s:\n%s", ee.ProcessState.String(), ee.Stderr)
+		slog.Error("git_multimail_wrapper.py failed",
+			slog.String("push", commitLine),
+			slog.String("stdout", string(output)),
+			slog.String("stderr", stderrBuf.String()))
+		return fmt.Errorf("git_multimail_wrapper.py  failed: %s", ee.ProcessState.String())
 	}
 	return err
 }
