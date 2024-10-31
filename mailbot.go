@@ -337,8 +337,13 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	if config.Email.Format != "" {
 		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.Email.Format))
 	}
-	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s <notifications@commit-emails.xyz>", *ev.HeadCommit.Committer.Name))
-	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", *ev.Repo.HTMLURL))
+	fromName := ev.GetHeadCommit().GetCommitter().GetName()
+	fromAddress := "notifications@commit-emails.xyz"
+	if fromName != "" {
+		fromAddress = fmt.Sprintf("%s <%s>", fromName, fromAddress)
+	}
+	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s", fromAddress))
+	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", ev.GetRepo().GetHTMLURL()))
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
 	commitLine := fmt.Sprintf("%s %s %s", *ev.Before, *ev.After, *ev.Ref)
 	stdin := bytes.NewReader([]byte(commitLine))
