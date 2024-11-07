@@ -10,7 +10,6 @@ import (
 	"errors"
 	"flag"
 	"fmt"
-	"github.com/tchajed/commit-emails-bot/stats"
 	"log"
 	"log/slog"
 	"net/http"
@@ -22,6 +21,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/tchajed/commit-emails-bot/stats"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
 	"github.com/google/go-github/v62/github"
@@ -240,7 +241,7 @@ func main() {
 		err = httpServer.ListenAndServeTLS("", "")
 	}
 	if err != nil && !errors.Is(err, http.ErrServerClosed) {
-		slog.Warn("http listen: %s", err)
+		slog.Warn("http listen", slog.String("error", err.Error()))
 	}
 
 	<-shutdownDone

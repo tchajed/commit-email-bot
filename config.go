@@ -2,8 +2,10 @@ package main
 
 import (
 	"fmt"
-	"github.com/BurntSushi/toml"
 	"log/slog"
+	"strings"
+
+	"github.com/BurntSushi/toml"
 )
 
 // handling repo config (commit-emails.toml)
@@ -27,7 +29,11 @@ func parseConfig(configText []byte) (config CommitEmailConfig, err error) {
 		return CommitEmailConfig{}, fmt.Errorf("decoding commit-emails.toml: %s", err)
 	}
 	if len(meta.Undecoded()) > 0 {
-		slog.Warn("unknown config fields: %v", meta.Undecoded())
+		var keys []string
+		for _, key := range meta.Undecoded() {
+			keys = append(keys, key.String())
+		}
+		slog.Warn("unknown config fields", slog.String("fields", strings.Join(keys, ", ")))
 	}
 	format := config.Email.Format
 	if !(format == "" || format == "html" || format == "text") {
