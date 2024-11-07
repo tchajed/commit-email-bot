@@ -1,6 +1,6 @@
 headers:
   Request method: POST
-  Accept: */*
+  Accept: "*/*"
   Content-Type: application/json
   User-Agent: GitHub-Hookshot/37285b7
   X-GitHub-Delivery: 2330b6b0-9703-11ef-81ea-f6aa742fa57e
@@ -10,19 +10,123 @@ headers:
   X-GitHub-Hook-Installation-Target-Type: integration
   X-Hub-Signature: sha1=55fc2c78739985bfac7d8e11759b59a2143c7e39
   X-Hub-Signature-256: sha256=87b890da0879a4c7e1e402f71924243e2ab7ec392a3b2645d3d6b4d213350248
-payload: {
-  "ref": "refs/heads/main",
-  "before": "7d14e731663d5a8ec7997b447ddea7e156ec3876",
-  "after": "ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
-  "repository": {
-    "id": 847925616,
-    "node_id": "R_kgDOMopRcA",
-    "name": "grackle",
-    "full_name": "mjschwenne/grackle",
-    "private": false,
-    "owner": {
+payload: |
+  {
+    "ref": "refs/heads/main",
+    "before": "7d14e731663d5a8ec7997b447ddea7e156ec3876",
+    "after": "ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
+    "repository": {
+      "id": 847925616,
+      "node_id": "R_kgDOMopRcA",
+      "name": "grackle",
+      "full_name": "mjschwenne/grackle",
+      "private": false,
+      "owner": {
+        "name": "mjschwenne",
+        "email": "mjschwenne@gmail.com",
+        "login": "mjschwenne",
+        "id": 19698215,
+        "node_id": "MDQ6VXNlcjE5Njk4MjE1",
+        "avatar_url": "https://avatars.githubusercontent.com/u/19698215?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/mjschwenne",
+        "html_url": "https://github.com/mjschwenne",
+        "followers_url": "https://api.github.com/users/mjschwenne/followers",
+        "following_url": "https://api.github.com/users/mjschwenne/following{/other_user}",
+        "gists_url": "https://api.github.com/users/mjschwenne/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/mjschwenne/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/mjschwenne/subscriptions",
+        "organizations_url": "https://api.github.com/users/mjschwenne/orgs",
+        "repos_url": "https://api.github.com/users/mjschwenne/repos",
+        "events_url": "https://api.github.com/users/mjschwenne/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/mjschwenne/received_events",
+        "type": "User",
+        "user_view_type": "public",
+        "site_admin": false
+      },
+      "html_url": "https://github.com/mjschwenne/grackle",
+      "description": "Automated marshalling and unmarshalling for verified distributed systems in Go. ",
+      "fork": false,
+      "url": "https://github.com/mjschwenne/grackle",
+      "forks_url": "https://api.github.com/repos/mjschwenne/grackle/forks",
+      "keys_url": "https://api.github.com/repos/mjschwenne/grackle/keys{/key_id}",
+      "collaborators_url": "https://api.github.com/repos/mjschwenne/grackle/collaborators{/collaborator}",
+      "teams_url": "https://api.github.com/repos/mjschwenne/grackle/teams",
+      "hooks_url": "https://api.github.com/repos/mjschwenne/grackle/hooks",
+      "issue_events_url": "https://api.github.com/repos/mjschwenne/grackle/issues/events{/number}",
+      "events_url": "https://api.github.com/repos/mjschwenne/grackle/events",
+      "assignees_url": "https://api.github.com/repos/mjschwenne/grackle/assignees{/user}",
+      "branches_url": "https://api.github.com/repos/mjschwenne/grackle/branches{/branch}",
+      "tags_url": "https://api.github.com/repos/mjschwenne/grackle/tags",
+      "blobs_url": "https://api.github.com/repos/mjschwenne/grackle/git/blobs{/sha}",
+      "git_tags_url": "https://api.github.com/repos/mjschwenne/grackle/git/tags{/sha}",
+      "git_refs_url": "https://api.github.com/repos/mjschwenne/grackle/git/refs{/sha}",
+      "trees_url": "https://api.github.com/repos/mjschwenne/grackle/git/trees{/sha}",
+      "statuses_url": "https://api.github.com/repos/mjschwenne/grackle/statuses/{sha}",
+      "languages_url": "https://api.github.com/repos/mjschwenne/grackle/languages",
+      "stargazers_url": "https://api.github.com/repos/mjschwenne/grackle/stargazers",
+      "contributors_url": "https://api.github.com/repos/mjschwenne/grackle/contributors",
+      "subscribers_url": "https://api.github.com/repos/mjschwenne/grackle/subscribers",
+      "subscription_url": "https://api.github.com/repos/mjschwenne/grackle/subscription",
+      "commits_url": "https://api.github.com/repos/mjschwenne/grackle/commits{/sha}",
+      "git_commits_url": "https://api.github.com/repos/mjschwenne/grackle/git/commits{/sha}",
+      "comments_url": "https://api.github.com/repos/mjschwenne/grackle/comments{/number}",
+      "issue_comment_url": "https://api.github.com/repos/mjschwenne/grackle/issues/comments{/number}",
+      "contents_url": "https://api.github.com/repos/mjschwenne/grackle/contents/{+path}",
+      "compare_url": "https://api.github.com/repos/mjschwenne/grackle/compare/{base}...{head}",
+      "merges_url": "https://api.github.com/repos/mjschwenne/grackle/merges",
+      "archive_url": "https://api.github.com/repos/mjschwenne/grackle/{archive_format}{/ref}",
+      "downloads_url": "https://api.github.com/repos/mjschwenne/grackle/downloads",
+      "issues_url": "https://api.github.com/repos/mjschwenne/grackle/issues{/number}",
+      "pulls_url": "https://api.github.com/repos/mjschwenne/grackle/pulls{/number}",
+      "milestones_url": "https://api.github.com/repos/mjschwenne/grackle/milestones{/number}",
+      "notifications_url": "https://api.github.com/repos/mjschwenne/grackle/notifications{?since,all,participating}",
+      "labels_url": "https://api.github.com/repos/mjschwenne/grackle/labels{/name}",
+      "releases_url": "https://api.github.com/repos/mjschwenne/grackle/releases{/id}",
+      "deployments_url": "https://api.github.com/repos/mjschwenne/grackle/deployments",
+      "created_at": 1724702655,
+      "updated_at": "2024-10-30T04:10:35Z",
+      "pushed_at": 1730322520,
+      "git_url": "git://github.com/mjschwenne/grackle.git",
+      "ssh_url": "git@github.com:mjschwenne/grackle.git",
+      "clone_url": "https://github.com/mjschwenne/grackle.git",
+      "svn_url": "https://github.com/mjschwenne/grackle",
+      "homepage": null,
+      "size": 194,
+      "stargazers_count": 1,
+      "watchers_count": 1,
+      "language": "Go",
+      "has_issues": true,
+      "has_projects": true,
+      "has_downloads": true,
+      "has_wiki": true,
+      "has_pages": false,
+      "has_discussions": false,
+      "forks_count": 1,
+      "mirror_url": null,
+      "archived": false,
+      "disabled": false,
+      "open_issues_count": 0,
+      "license": null,
+      "allow_forking": true,
+      "is_template": false,
+      "web_commit_signoff_required": false,
+      "topics": [
+
+      ],
+      "visibility": "public",
+      "forks": 1,
+      "open_issues": 0,
+      "watchers": 1,
+      "default_branch": "main",
+      "stargazers": 1,
+      "master_branch": "main"
+    },
+    "pusher": {
       "name": "mjschwenne",
-      "email": "mjschwenne@gmail.com",
+      "email": "mjschwenne@gmail.com"
+    },
+    "sender": {
       "login": "mjschwenne",
       "id": 19698215,
       "node_id": "MDQ6VXNlcjE5Njk4MjE1",
@@ -43,120 +147,45 @@ payload: {
       "user_view_type": "public",
       "site_admin": false
     },
-    "html_url": "https://github.com/mjschwenne/grackle",
-    "description": "Automated marshalling and unmarshalling for verified distributed systems in Go. ",
-    "fork": false,
-    "url": "https://github.com/mjschwenne/grackle",
-    "forks_url": "https://api.github.com/repos/mjschwenne/grackle/forks",
-    "keys_url": "https://api.github.com/repos/mjschwenne/grackle/keys{/key_id}",
-    "collaborators_url": "https://api.github.com/repos/mjschwenne/grackle/collaborators{/collaborator}",
-    "teams_url": "https://api.github.com/repos/mjschwenne/grackle/teams",
-    "hooks_url": "https://api.github.com/repos/mjschwenne/grackle/hooks",
-    "issue_events_url": "https://api.github.com/repos/mjschwenne/grackle/issues/events{/number}",
-    "events_url": "https://api.github.com/repos/mjschwenne/grackle/events",
-    "assignees_url": "https://api.github.com/repos/mjschwenne/grackle/assignees{/user}",
-    "branches_url": "https://api.github.com/repos/mjschwenne/grackle/branches{/branch}",
-    "tags_url": "https://api.github.com/repos/mjschwenne/grackle/tags",
-    "blobs_url": "https://api.github.com/repos/mjschwenne/grackle/git/blobs{/sha}",
-    "git_tags_url": "https://api.github.com/repos/mjschwenne/grackle/git/tags{/sha}",
-    "git_refs_url": "https://api.github.com/repos/mjschwenne/grackle/git/refs{/sha}",
-    "trees_url": "https://api.github.com/repos/mjschwenne/grackle/git/trees{/sha}",
-    "statuses_url": "https://api.github.com/repos/mjschwenne/grackle/statuses/{sha}",
-    "languages_url": "https://api.github.com/repos/mjschwenne/grackle/languages",
-    "stargazers_url": "https://api.github.com/repos/mjschwenne/grackle/stargazers",
-    "contributors_url": "https://api.github.com/repos/mjschwenne/grackle/contributors",
-    "subscribers_url": "https://api.github.com/repos/mjschwenne/grackle/subscribers",
-    "subscription_url": "https://api.github.com/repos/mjschwenne/grackle/subscription",
-    "commits_url": "https://api.github.com/repos/mjschwenne/grackle/commits{/sha}",
-    "git_commits_url": "https://api.github.com/repos/mjschwenne/grackle/git/commits{/sha}",
-    "comments_url": "https://api.github.com/repos/mjschwenne/grackle/comments{/number}",
-    "issue_comment_url": "https://api.github.com/repos/mjschwenne/grackle/issues/comments{/number}",
-    "contents_url": "https://api.github.com/repos/mjschwenne/grackle/contents/{+path}",
-    "compare_url": "https://api.github.com/repos/mjschwenne/grackle/compare/{base}...{head}",
-    "merges_url": "https://api.github.com/repos/mjschwenne/grackle/merges",
-    "archive_url": "https://api.github.com/repos/mjschwenne/grackle/{archive_format}{/ref}",
-    "downloads_url": "https://api.github.com/repos/mjschwenne/grackle/downloads",
-    "issues_url": "https://api.github.com/repos/mjschwenne/grackle/issues{/number}",
-    "pulls_url": "https://api.github.com/repos/mjschwenne/grackle/pulls{/number}",
-    "milestones_url": "https://api.github.com/repos/mjschwenne/grackle/milestones{/number}",
-    "notifications_url": "https://api.github.com/repos/mjschwenne/grackle/notifications{?since,all,participating}",
-    "labels_url": "https://api.github.com/repos/mjschwenne/grackle/labels{/name}",
-    "releases_url": "https://api.github.com/repos/mjschwenne/grackle/releases{/id}",
-    "deployments_url": "https://api.github.com/repos/mjschwenne/grackle/deployments",
-    "created_at": 1724702655,
-    "updated_at": "2024-10-30T04:10:35Z",
-    "pushed_at": 1730322520,
-    "git_url": "git://github.com/mjschwenne/grackle.git",
-    "ssh_url": "git@github.com:mjschwenne/grackle.git",
-    "clone_url": "https://github.com/mjschwenne/grackle.git",
-    "svn_url": "https://github.com/mjschwenne/grackle",
-    "homepage": null,
-    "size": 194,
-    "stargazers_count": 1,
-    "watchers_count": 1,
-    "language": "Go",
-    "has_issues": true,
-    "has_projects": true,
-    "has_downloads": true,
-    "has_wiki": true,
-    "has_pages": false,
-    "has_discussions": false,
-    "forks_count": 1,
-    "mirror_url": null,
-    "archived": false,
-    "disabled": false,
-    "open_issues_count": 0,
-    "license": null,
-    "allow_forking": true,
-    "is_template": false,
-    "web_commit_signoff_required": false,
-    "topics": [
+    "installation": {
+      "id": 55739159,
+      "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uNTU3MzkxNTk="
+    },
+    "created": false,
+    "deleted": false,
+    "forced": false,
+    "base_ref": null,
+    "compare": "https://github.com/mjschwenne/grackle/compare/7d14e731663d...ff24fe3e3f70",
+    "commits": [
+      {
+        "id": "ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
+        "tree_id": "299b0b7fa6c3c7f712a3da8de856a1e601ac3c7c",
+        "distinct": true,
+        "message": "update example proofs to use string, not *string",
+        "timestamp": "2024-10-30T16:08:37-05:00",
+        "url": "https://github.com/mjschwenne/grackle/commit/ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
+        "author": {
+          "name": "Matt Schwennesen",
+          "email": "mjschwenne@gmail.com",
+          "username": "mjschwenne"
+        },
+        "committer": {
+          "name": "Matt Schwennesen",
+          "email": "mjschwenne@gmail.com",
+          "username": "mjschwenne"
+        },
+        "added": [
 
+        ],
+        "removed": [
+
+        ],
+        "modified": [
+          "example/event_proof.v"
+        ]
+      }
     ],
-    "visibility": "public",
-    "forks": 1,
-    "open_issues": 0,
-    "watchers": 1,
-    "default_branch": "main",
-    "stargazers": 1,
-    "master_branch": "main"
-  },
-  "pusher": {
-    "name": "mjschwenne",
-    "email": "mjschwenne@gmail.com"
-  },
-  "sender": {
-    "login": "mjschwenne",
-    "id": 19698215,
-    "node_id": "MDQ6VXNlcjE5Njk4MjE1",
-    "avatar_url": "https://avatars.githubusercontent.com/u/19698215?v=4",
-    "gravatar_id": "",
-    "url": "https://api.github.com/users/mjschwenne",
-    "html_url": "https://github.com/mjschwenne",
-    "followers_url": "https://api.github.com/users/mjschwenne/followers",
-    "following_url": "https://api.github.com/users/mjschwenne/following{/other_user}",
-    "gists_url": "https://api.github.com/users/mjschwenne/gists{/gist_id}",
-    "starred_url": "https://api.github.com/users/mjschwenne/starred{/owner}{/repo}",
-    "subscriptions_url": "https://api.github.com/users/mjschwenne/subscriptions",
-    "organizations_url": "https://api.github.com/users/mjschwenne/orgs",
-    "repos_url": "https://api.github.com/users/mjschwenne/repos",
-    "events_url": "https://api.github.com/users/mjschwenne/events{/privacy}",
-    "received_events_url": "https://api.github.com/users/mjschwenne/received_events",
-    "type": "User",
-    "user_view_type": "public",
-    "site_admin": false
-  },
-  "installation": {
-    "id": 55739159,
-    "node_id": "MDIzOkludGVncmF0aW9uSW5zdGFsbGF0aW9uNTU3MzkxNTk="
-  },
-  "created": false,
-  "deleted": false,
-  "forced": false,
-  "base_ref": null,
-  "compare": "https://github.com/mjschwenne/grackle/compare/7d14e731663d...ff24fe3e3f70",
-  "commits": [
-    {
+    "head_commit": {
       "id": "ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
       "tree_id": "299b0b7fa6c3c7f712a3da8de856a1e601ac3c7c",
       "distinct": true,
@@ -183,32 +212,4 @@ payload: {
         "example/event_proof.v"
       ]
     }
-  ],
-  "head_commit": {
-    "id": "ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
-    "tree_id": "299b0b7fa6c3c7f712a3da8de856a1e601ac3c7c",
-    "distinct": true,
-    "message": "update example proofs to use string, not *string",
-    "timestamp": "2024-10-30T16:08:37-05:00",
-    "url": "https://github.com/mjschwenne/grackle/commit/ff24fe3e3f70d4f8739e5870f1f5fb51e98720ed",
-    "author": {
-      "name": "Matt Schwennesen",
-      "email": "mjschwenne@gmail.com",
-      "username": "mjschwenne"
-    },
-    "committer": {
-      "name": "Matt Schwennesen",
-      "email": "mjschwenne@gmail.com",
-      "username": "mjschwenne"
-    },
-    "added": [
-
-    ],
-    "removed": [
-
-    ],
-    "modified": [
-      "example/event_proof.v"
-    ]
   }
-}

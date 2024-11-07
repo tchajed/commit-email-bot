@@ -9,6 +9,7 @@ require (
 	github.com/gregjones/httpcache v0.0.0-20190611155906-901d90724c79
 	github.com/mattn/go-sqlite3 v1.14.23
 	golang.org/x/crypto v0.27.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
