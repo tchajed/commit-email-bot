@@ -163,7 +163,7 @@ func main() {
 	certManager := autocert.Manager{
 		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(Cfg.PersistPath, fmt.Sprintf("www.%s", Cfg.Hostname)),
+		HostPolicy: autocert.HostWhitelist(Cfg.Hostname, fmt.Sprintf("www.%s", Cfg.Hostname)),
 	}
 	// This HTTP handler listens for ACME "http-01" challenges, and redirects
 	// other requests. It's useful for the latter in production in case someone
