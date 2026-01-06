@@ -26,7 +26,7 @@ You'll need to point the commit-emails.xyz domain to the droplet: configure Name
 Install docker:
 
 ```bash
-sudo apt install -y docker.io docker-compose docker-buildx
+sudo apt install -y docker.io docker-compose-v2 docker-buildx
 ```
 
 A 512MB virtual machine runs out of memory when building, but not when running, so make sure to configure some swap space:
@@ -45,7 +45,7 @@ Copy the private key for the production secrets in `.env.production`:
 rsync .env.keys root@commit-emails.xyz:./commit-email-bot/
 ```
 
-Finally, build and run the server with `dotenvx run -f .env.keys -- docker-compose up --build`.
+Finally, build and run the server with `dotenvx run -f .env.keys -- docker compose up --build`.
 
 ## Future work
 
