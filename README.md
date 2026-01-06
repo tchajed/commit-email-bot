@@ -19,9 +19,33 @@ Every email from commit-email-bot contains the string `jD27HVpTX3tELRBjcpGsK6io7
 
 ## Deploying
 
-Use `dotenvx run -f .env.keys -- docker compose up --build`. (You need the private key in `.env.keys` to access the secrets in `.env.production`.)
+Create a Digital Ocean droplet and a volume. Clone the repo on the droplet. Mount the created volume (following Digital Ocean's instructions to get its UUID) to `/root/commit-email-bot/persist`.
 
-A 512MB virtual machine runs out of memory when building, but not when running, so make sure to configure some swap space.
+You'll need to point the commit-emails.xyz domain to the droplet: configure NameCheap's A record to the droplet's public IPv4 address.
+
+Install docker:
+
+```bash
+sudo apt install -y docker.io docker-compose docker-buildx
+```
+
+A 512MB virtual machine runs out of memory when building, but not when running, so make sure to configure some swap space:
+
+```bash
+sudo fallocate -l 2G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+```
+
+Copy the private key for the production secrets in `.env.production`:
+
+```bash
+rsync .env.keys root@commit-emails.xyz:./commit-email-bot/
+```
+
+Finally, build and run the server with `dotenvx run -f .env.keys -- docker-compose up --build`.
 
 ## Future work
 
