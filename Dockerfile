@@ -24,7 +24,8 @@ RUN curl -sfS https://dotenvx.sh/install.sh | sh
 # Install uv for running the Python wrapper script
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
-COPY git_multimail_wrapper.py git-multimail.config ./
+COPY git_multimail_wrapper.py git_multimail_wrapper.py.lock git-multimail.config ./
+RUN ./git_multimail_wrapper.py --version
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
