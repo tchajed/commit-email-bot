@@ -167,13 +167,15 @@ func main() {
 		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
 		HostPolicy: autocert.HostWhitelist(Cfg.Hostname, fmt.Sprintf("www.%s", Cfg.Hostname)),
+		// TODO: add this to env configuration
+		Email: "tchajed@gmail.com",
 	}
 	// This HTTP handler listens for ACME "http-01" challenges, and redirects
 	// other requests. It's useful for the latter in production in case someone
 	// navigates to the website without https.
 	//
 	// On localhost this makes no sense to run.
-	if Cfg.Insecure() {
+	if !Cfg.Insecure() {
 		go func() {
 			err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 			if err != nil {
