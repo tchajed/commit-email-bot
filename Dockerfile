@@ -2,7 +2,7 @@
 # https://www.docker.com/blog/containerize-your-go-developer-environment-part-2/
 # NOTE: not using the golang alpine image since we need cgo for sqlite3. It doesn't matter much since this image is only
 # used during the build; the running container is the Python one.
-FROM golang:1.23 AS build
+FROM golang:1.25 AS build
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
