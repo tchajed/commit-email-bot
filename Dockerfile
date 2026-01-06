@@ -18,10 +18,11 @@ RUN set -eux; \
   rm -rf /var/lib/apt/lists/*
 
 # cache this installation first
-COPY requirements.txt ./
-RUN pip3 install -r requirements.txt
 # Install dotenvx
 RUN curl -sfS https://dotenvx.sh/install.sh | sh
+
+# Install uv for running the Python wrapper script
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
 
 COPY git_multimail_wrapper.py git-multimail.config ./
 

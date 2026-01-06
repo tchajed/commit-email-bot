@@ -1,4 +1,10 @@
-#! /usr/bin/env python3
+#!/usr/bin/env -S uv run
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "git-multimail @ git+https://github.com/git-multimail/git-multimail",
+# ]
+# ///
 
 import git_multimail
 import sys

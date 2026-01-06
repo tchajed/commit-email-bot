@@ -1,0 +1,11 @@
+version = 1
+revision = 3
+requires-python = ">=3.12"
+
+[manifest]
+requirements = [{ name = "git-multimail", git = "https://github.com/git-multimail/git-multimail" }]
+
+[[package]]
+name = "git-multimail"
+version = "1.7.dev0"
+source = { git = "https://github.com/git-multimail/git-multimail#747fad49038b1f0eea12ab4ad453fb404111fe11" }
