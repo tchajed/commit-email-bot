@@ -102,8 +102,11 @@ func (c AppConfig) Insecure() bool {
 	return c.Hostname == "localhost"
 }
 
-//go:embed index.html
+//go:embed static/index.html
 var indexHTML []byte
+
+//go:embed static/logo.png
+var logoPNG []byte
 
 // Server tracks state for the running in-memory server
 type Server struct {
@@ -192,6 +195,10 @@ func main() {
 	mux.HandleFunc("/", func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Cache-Control", "max-age=600")
 		_, _ = w.Write(indexHTML)
+	})
+	mux.HandleFunc("/assets/logo.png", func(w http.ResponseWriter, req *http.Request) {
+		w.Header().Set("Cache-Control", "max-age=600")
+		_, _ = w.Write(logoPNG)
 	})
 	mux.HandleFunc("/webhook", func(w http.ResponseWriter, req *http.Request) {
 		srv.githubEventHandler(w, req)
