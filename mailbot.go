@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"crypto/tls"
 	_ "embed"
 	"encoding/base64"
 	"errors"
@@ -210,7 +209,7 @@ func main() {
 		Addr:    fmt.Sprintf(":%s", Cfg.Port),
 		Handler: mux,
 
-		TLSConfig: &tls.Config{GetCertificate: certManager.GetCertificate},
+		TLSConfig: certManager.TLSConfig(),
 
 		ErrorLog: slog.NewLogLogger(
 			handler.WithAttrs([]slog.Attr{slog.String("source", "http")}),
