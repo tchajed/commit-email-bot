@@ -244,6 +244,7 @@ func main() {
 
 	if cfg.SmtpPassword == "" {
 		fmt.Println("sending emails to stdout")
+		cfg.EmailStdout = true
 	}
 	fmt.Printf("host %s listening on :%s\n", cfg.Hostname, cfg.Port)
 	slog.Info("starting server")
@@ -324,11 +325,17 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(h.srv.transport, h.srv.cfg.AppId, *ev.Installation.ID, h.srv.cfg.AppPrivateKey)
-	if err != nil {
-		return err
+	var client *github.Client
+	if h.srv.cfg.AppId != 0 {
+		itr, err := ghinstallation.New(h.srv.transport, h.srv.cfg.AppId, *ev.Installation.ID, h.srv.cfg.AppPrivateKey)
+		if err != nil {
+			return fmt.Errorf("could not create installation transport: %w", err)
+		}
+		client = github.NewClient(&http.Client{Transport: itr})
+	} else {
+		// fetch repo unauthenticated
+		client = github.NewClient(nil)
 	}
-	client := github.NewClient(&http.Client{Transport: itr})
 	gitDir, err := SyncRepo(ctx, client, ev.Repo, h.srv.cfg.PersistPath)
 	if err != nil {
 		if _, ok := err.(MissingConfigError); ok {
@@ -340,7 +347,7 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	smtpPass := h.srv.cfg.SmtpPassword
 
 	args := []string{}
-	if smtpPass == "" {
+	if h.srv.cfg.EmailStdout {
 		args = append(args, "--stdout")
 	}
 	config, err := getConfig(gitDir)
@@ -376,6 +383,9 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPass))
 	output, err := cmd.Output()
 	if err == nil {
+		if h.srv.cfg.EmailStdout {
+			fmt.Println(string(output))
+		}
 		return nil
 	}
 	if ee, ok := err.(*exec.ExitError); ok {

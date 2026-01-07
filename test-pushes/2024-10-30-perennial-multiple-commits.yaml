@@ -1,6 +1,6 @@
 headers:
   Request method: POST
-  Accept: */*
+  Accept: "*/*"
   Content-Type: application/json
   User-Agent: GitHub-Hookshot/37285b7
   X-GitHub-Delivery: 88e069c2-9723-11ef-9e7c-bb6d9dc7cc5d
@@ -10,7 +10,8 @@ headers:
   X-GitHub-Hook-Installation-Target-Type: integration
   X-Hub-Signature: sha1=68098d05b3446c6353cdb19dd6dc3807bf8152c8
   X-Hub-Signature-256: sha256=08d11034672c07ff7f7198d0b40997ee1f04bf0eb9dd7c970cc9348579ae1bd2
-payload: {
+payload: |
+  {
   "ref": "refs/heads/master",
   "before": "f4c00379f14231ddf55af379263e7a8e0bc1add4",
   "after": "a832d4e9a4fac45a9f9181d70a65c8e0a847736b",
@@ -271,4 +272,4 @@ payload: {
       "new/proof/etcdraft.v"
     ]
   }
-}
+  }
