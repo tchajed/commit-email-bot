@@ -43,13 +43,7 @@ type AppConfig struct {
 	DenyAccounts map[string]bool
 }
 
-var Cfg AppConfig
-
-func (cfg AppConfig) Denied(account string) bool {
-	return cfg.DenyAccounts[account]
-}
-
-func init() {
+func readEnvConfig(cfg *AppConfig) {
 	// If dotenvx is not used, an environment variable might still be encrypted.
 	// Treat this as if the environment variable wasn't passed.
 	getEncryptedEnv := func(varName string) string {
@@ -60,28 +54,26 @@ func init() {
 		return raw
 	}
 
-	Cfg = AppConfig{}
-
-	Cfg.Hostname = os.Getenv("TLS_HOSTNAME")
-	if Cfg.Hostname == "" {
-		Cfg.Hostname = "localhost"
+	cfg.Hostname = os.Getenv("TLS_HOSTNAME")
+	if cfg.Hostname == "" {
+		cfg.Hostname = "localhost"
 	}
-	Cfg.PersistPath = os.Getenv("PERSIST_PATH")
-	if Cfg.PersistPath == "" {
-		Cfg.PersistPath = "persist"
+	cfg.PersistPath = os.Getenv("PERSIST_PATH")
+	if cfg.PersistPath == "" {
+		cfg.PersistPath = "persist"
 	}
-	Cfg.Port = "https"
-	Cfg.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
-	Cfg.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
+	cfg.Port = "https"
+	cfg.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
+	cfg.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")
 	emailStdout := os.Getenv("EMAIL_STDOUT")
 	if emailStdout == "true" || emailStdout == "1" {
-		Cfg.EmailStdout = true
+		cfg.EmailStdout = true
 	}
 
 	var err error
 	appIdStr := getEncryptedEnv("GITHUB_APP_ID")
 	if appIdStr != "" {
-		Cfg.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
+		cfg.AppId, err = strconv.ParseInt(appIdStr, 10, 64)
 		if err != nil {
 			log.Fatalf("GITHUB_APP_ID is not a number, got %s", appIdStr)
 		}
@@ -90,11 +82,15 @@ func init() {
 	keyEncoded := getEncryptedEnv("GITHUB_APP_PRIVATE_KEY")
 	if keyEncoded != "" {
 		// base64 decode
-		Cfg.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
+		cfg.AppPrivateKey, err = base64.StdEncoding.DecodeString(keyEncoded)
 		if err != nil {
 			log.Fatal("private key has invalid base64")
 		}
 	}
+}
+
+func (cfg AppConfig) Denied(account string) bool {
+	return cfg.DenyAccounts[account]
 }
 
 func (c AppConfig) Insecure() bool {
@@ -109,6 +105,7 @@ var logoPNG []byte
 
 // Server tracks state for the running in-memory server
 type Server struct {
+	cfg       AppConfig
 	transport http.RoundTripper
 	db        stats.Database
 }
@@ -136,23 +133,27 @@ func openDenyAccounts(path string) map[string]bool {
 }
 
 func main() {
-	flag.StringVar(&Cfg.Hostname, "hostname", Cfg.Hostname, "tls hostname (use localhost to disable https)")
-	flag.StringVar(&Cfg.PersistPath, "persist", Cfg.PersistPath, "directory for persistent data")
-	flag.StringVar(&Cfg.Port, "port", Cfg.Port, "port to listen on")
+	var cfg AppConfig
+	// read environment first, so command line flags override environment
+	readEnvConfig(&cfg)
+
+	flag.StringVar(&cfg.Hostname, "hostname", cfg.Hostname, "tls hostname (use localhost to disable https)")
+	flag.StringVar(&cfg.PersistPath, "persist", cfg.PersistPath, "directory for persistent data")
+	flag.StringVar(&cfg.Port, "port", cfg.Port, "port to listen on")
 	flag.Parse()
 
-	if Cfg.EmailStdout {
-		Cfg.SmtpPassword = ""
+	if cfg.EmailStdout {
+		cfg.SmtpPassword = ""
 	}
 
-	if err := os.MkdirAll(Cfg.PersistPath, 0770); err != nil {
+	if err := os.MkdirAll(cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
 
-	Cfg.DenyAccounts = openDenyAccounts(filepath.Join(Cfg.PersistPath, "deny-accounts.txt"))
+	cfg.DenyAccounts = openDenyAccounts(filepath.Join(cfg.PersistPath, "deny-accounts.txt"))
 
 	logFile, err := os.OpenFile(
-		filepath.Join(Cfg.PersistPath, "commit-email-bot.log"),
+		filepath.Join(cfg.PersistPath, "commit-email-bot.log"),
 		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
 	if err != nil {
 		log.Fatalf("could not create log file: %v", err)
@@ -162,11 +163,11 @@ func main() {
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
-	tlsKeysDir := filepath.Join(Cfg.PersistPath, "tls_keys")
+	tlsKeysDir := filepath.Join(cfg.PersistPath, "tls_keys")
 	certManager := autocert.Manager{
 		Cache:      autocert.DirCache(tlsKeysDir),
 		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(Cfg.Hostname, fmt.Sprintf("www.%s", Cfg.Hostname)),
+		HostPolicy: autocert.HostWhitelist(cfg.Hostname, fmt.Sprintf("www.%s", cfg.Hostname)),
 		// TODO: add this to env configuration
 		Email: "tchajed@gmail.com",
 	}
@@ -175,7 +176,7 @@ func main() {
 	// navigates to the website without https.
 	//
 	// On localhost this makes no sense to run.
-	if !Cfg.Insecure() {
+	if !cfg.Insecure() {
 		go func() {
 			err := http.ListenAndServe(":http", certManager.HTTPHandler(nil))
 			if err != nil {
@@ -185,11 +186,12 @@ func main() {
 	}
 
 	ct := httpcache.NewMemoryCacheTransport()
-	db, err := stats.New(Cfg.PersistPath)
+	db, err := stats.New(cfg.PersistPath)
 	if err != nil {
 		log.Fatalf("could not open database: %v", err)
 	}
 	srv := Server{
+		cfg:       cfg,
 		transport: ct,
 		db:        db,
 	}
@@ -207,7 +209,7 @@ func main() {
 	})
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", Cfg.Port),
+		Addr:    fmt.Sprintf(":%s", cfg.Port),
 		Handler: mux,
 
 		TLSConfig: certManager.TLSConfig(),
@@ -239,12 +241,12 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	if Cfg.SmtpPassword == "" {
+	if cfg.SmtpPassword == "" {
 		fmt.Println("sending emails to stdout")
 	}
-	fmt.Printf("host %s listening on :%s\n", Cfg.Hostname, Cfg.Port)
+	fmt.Printf("host %s listening on :%s\n", cfg.Hostname, cfg.Port)
 	slog.Info("starting server")
-	if Cfg.Insecure() {
+	if cfg.Insecure() {
 		err = httpServer.ListenAndServe()
 	} else {
 		err = httpServer.ListenAndServeTLS("", "")
@@ -257,7 +259,7 @@ func main() {
 }
 
 func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
-	payload, err := github.ValidatePayload(req, Cfg.WebhookSecret)
+	payload, err := github.ValidatePayload(req, srv.cfg.WebhookSecret)
 	if err != nil {
 		http.Error(w, "could not validate payload: "+err.Error(), http.StatusBadRequest)
 		return
@@ -275,7 +277,7 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 		if account == "" {
 			account = event.GetRepo().GetOrganization()
 		}
-		if Cfg.Denied(account) {
+		if srv.cfg.Denied(account) {
 			slog.Info("denied push", slog.String("account", account))
 			http.Error(w, "account denied", http.StatusForbidden)
 			return
@@ -321,12 +323,12 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
-	itr, err := ghinstallation.New(h.srv.transport, Cfg.AppId, *ev.Installation.ID, Cfg.AppPrivateKey)
+	itr, err := ghinstallation.New(h.srv.transport, h.srv.cfg.AppId, *ev.Installation.ID, h.srv.cfg.AppPrivateKey)
 	if err != nil {
 		return err
 	}
 	client := github.NewClient(&http.Client{Transport: itr})
-	gitDir, err := SyncRepo(ctx, client, ev.Repo)
+	gitDir, err := SyncRepo(ctx, client, ev.Repo, h.srv.cfg.PersistPath)
 	if err != nil {
 		if _, ok := err.(MissingConfigError); ok {
 			slog.Info("push to unconfigured repo", slog.String("repo", h.repo))
@@ -334,9 +336,10 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 		}
 		return err
 	}
+	smtpPass := h.srv.cfg.SmtpPassword
 
 	args := []string{}
-	if Cfg.SmtpPassword == "" {
+	if smtpPass == "" {
 		args = append(args, "--stdout")
 	}
 	config, err := getConfig(gitDir)
@@ -369,7 +372,7 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	// line with -c since other processes can read that.
 	//
 	// Single quotes are necessary for git to parse this correctly.
-	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", Cfg.SmtpPassword))
+	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPass))
 	output, err := cmd.Output()
 	if err == nil {
 		return nil

@@ -39,7 +39,7 @@ func tokenToParams(token string) []gitConfigParam {
 	}}
 }
 
-func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository) (gitDir string, err error) {
+func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEventRepository, persistPath string) (gitDir string, err error) {
 	_, _, _, err = client.Repositories.GetContents(ctx, *repo.Owner.Login, *repo.Name, ".github/commit-emails.toml", nil)
 	if err != nil {
 		if _, ok := err.(*github.RateLimitError); ok {
@@ -60,7 +60,7 @@ func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEvent
 	}
 	params := tokenToParams(token)
 
-	gitDir = repoGitDir(Cfg.PersistPath, repo)
+	gitDir = repoGitDir(persistPath, repo)
 	fi, err := os.Stat(gitDir)
 	if os.IsNotExist(err) {
 		err := gitClone(*repo.CloneURL, gitDir, params)
