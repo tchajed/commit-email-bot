@@ -125,12 +125,13 @@ func openDenyAccounts(path string) map[string]bool {
 	if err != nil {
 		log.Fatalf("could not open deny file: %v", err)
 	}
+	defer f.Close()
 	deny := make(map[string]bool)
 	scanner := bufio.NewScanner(f)
+	scanner.Split(bufio.ScanLines)
 	for scanner.Scan() {
 		deny[scanner.Text()] = true
 	}
-	defer f.Close()
 	return deny
 }
 
