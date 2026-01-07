@@ -62,6 +62,7 @@ func readEnvConfig(cfg *AppConfig) {
 	if cfg.PersistPath == "" {
 		cfg.PersistPath = "persist"
 	}
+	// alias for 443
 	cfg.Port = "https"
 	cfg.WebhookSecret = []byte(getEncryptedEnv("WEBHOOK_SECRET"))
 	cfg.SmtpPassword = getEncryptedEnv("MAIL_SMTP_PASSWORD")

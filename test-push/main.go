@@ -35,6 +35,7 @@ func parseTestPush(fileName string) (*TestPush, error) {
 
 func main() {
 	fileName := flag.String("file", "", "push yaml file")
+	port := flag.String("port", "8000", "local port to make request to")
 	flag.Parse()
 
 	if *fileName == "" {
@@ -47,7 +48,8 @@ func main() {
 	}
 
 	client := &http.Client{}
-	req, err := http.NewRequest("POST", "http://localhost:443/webhook", strings.NewReader(testPush.Payload))
+	url := fmt.Sprintf("http://localhost:%s/webhook", *port)
+	req, err := http.NewRequest("POST", url, strings.NewReader(testPush.Payload))
 	if err != nil {
 		log.Fatal(err)
 	}
