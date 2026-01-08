@@ -138,9 +138,13 @@ func main() {
 	// read environment first, so command line flags override environment
 	readEnvConfig(&cfg)
 
+	var logFilePath string
+
 	flag.StringVar(&cfg.Hostname, "hostname", cfg.Hostname, "tls hostname (use localhost to disable https)")
 	flag.StringVar(&cfg.PersistPath, "persist", cfg.PersistPath, "directory for persistent data")
 	flag.StringVar(&cfg.Port, "port", cfg.Port, "port to listen on")
+	flag.StringVar(&logFilePath, "log", "-", "file to log to (- for stdout, otherwise file name within persist path)")
+	flag.BoolVar(&cfg.EmailStdout, "email-stdout", cfg.EmailStdout, "send emails to stdout")
 	flag.Parse()
 
 	if err := os.MkdirAll(cfg.PersistPath, 0770); err != nil {
@@ -149,14 +153,19 @@ func main() {
 
 	cfg.DenyAccounts = openDenyAccounts(filepath.Join(cfg.PersistPath, "deny-accounts.txt"))
 
-	logFile, err := os.OpenFile(
-		filepath.Join(cfg.PersistPath, "commit-email-bot.log"),
-		os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
-	if err != nil {
-		log.Fatalf("could not create log file: %v", err)
+	var handler *slog.JSONHandler
+	if logFilePath == "-" {
+		handler = slog.NewJSONHandler(os.Stdout, nil)
+	} else if logFilePath != "" {
+		logFile, err := os.OpenFile(
+			filepath.Join(cfg.PersistPath, logFilePath),
+			os.O_WRONLY|os.O_APPEND|os.O_CREATE, 0660)
+		if err != nil {
+			log.Fatalf("could not create log file: %v", err)
+		}
+		defer logFile.Close()
+		handler = slog.NewJSONHandler(logFile, nil)
 	}
-	defer logFile.Close()
-	handler := slog.NewJSONHandler(logFile, nil)
 	logger := slog.New(handler)
 	slog.SetDefault(logger)
 
@@ -383,7 +392,7 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	output, err := cmd.Output()
 	if err == nil {
 		if h.srv.cfg.EmailStdout {
-			fmt.Println(string(output))
+			fmt.Printf("%s", string(output))
 		}
 		return nil
 	}

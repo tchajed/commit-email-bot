@@ -12,10 +12,10 @@ RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-e
 FROM python:3.12-slim
 WORKDIR /app
 RUN set -eux; \
-  apt-get update; \
-  apt-get install -y --no-install-recommends git curl; \
-  apt-get clean; \
-  rm -rf /var/lib/apt/lists/*
+    apt-get update; \
+    apt-get install -y --no-install-recommends git curl; \
+    apt-get clean; \
+    rm -rf /var/lib/apt/lists/*
 
 # cache this installation first
 # Install dotenvx
@@ -35,4 +35,4 @@ COPY .env.production ./
 EXPOSE 8888
 EXPOSE 80
 ENV TLS_HOSTNAME="commit-emails.xyz"
-CMD [ "dotenvx", "run", "--", "/app/commit-email-bot", "-port", "8888" ]
+CMD [ "dotenvx", "run", "--", "/app/commit-email-bot", "-port", "8888", "-log", "commit-email-bot.log" ]
