@@ -52,13 +52,17 @@ func SyncRepo(ctx context.Context, client *github.Client, repo *github.PushEvent
 		return "", MissingConfigError{}
 	}
 
-	// TODO: might not want to authenticate for public repos
-	itr := client.Client().Transport.(*ghinstallation.Transport)
-	token, err := itr.Token(ctx)
-	if err != nil {
-		return "", err
+	// Get authentication token if available, otherwise use unauthenticated access
+	var params []gitConfigParam
+	if transport := client.Client().Transport; transport != nil {
+		if itr, ok := transport.(*ghinstallation.Transport); ok {
+			token, err := itr.Token(ctx)
+			if err != nil {
+				return "", err
+			}
+			params = tokenToParams(token)
+		}
 	}
-	params := tokenToParams(token)
 
 	gitDir = repoGitDir(persistPath, repo)
 	fi, err := os.Stat(gitDir)

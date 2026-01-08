@@ -146,6 +146,9 @@ func main() {
 	if cfg.EmailStdout {
 		cfg.SmtpPassword = ""
 	}
+	if cfg.SmtpPassword == "" {
+		cfg.EmailStdout = true
+	}
 
 	if err := os.MkdirAll(cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
@@ -210,7 +213,7 @@ func main() {
 	})
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf(":%s", cfg.Port),
+		Addr:    fmt.Sprintf("%s:%s", cfg.Hostname, cfg.Port),
 		Handler: mux,
 
 		TLSConfig: certManager.TLSConfig(),
@@ -242,11 +245,10 @@ func main() {
 		close(shutdownDone)
 	}()
 
-	if cfg.SmtpPassword == "" {
+	if cfg.EmailStdout {
 		fmt.Println("sending emails to stdout")
-		cfg.EmailStdout = true
 	}
-	fmt.Printf("host %s listening on :%s\n", cfg.Hostname, cfg.Port)
+	fmt.Printf("listening on %s:%s\n", cfg.Hostname, cfg.Port)
 	slog.Info("starting server")
 	if cfg.Insecure() {
 		err = httpServer.ListenAndServe()
@@ -365,7 +367,9 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	}
 	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s", fromAddress))
 	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", ev.GetRepo().GetHTMLURL()))
+
 	cmd := exec.Command("./git_multimail_wrapper.py", args...)
+
 	commitLine := fmt.Sprintf("%s %s %s", *ev.Before, *ev.After, *ev.Ref)
 	stdin := bytes.NewReader([]byte(commitLine))
 	cmd.Stdin = stdin
@@ -380,7 +384,9 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	// line with -c since other processes can read that.
 	//
 	// Single quotes are necessary for git to parse this correctly.
-	cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPass))
+	if !h.srv.cfg.EmailStdout {
+		cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPass))
+	}
 	output, err := cmd.Output()
 	if err == nil {
 		if h.srv.cfg.EmailStdout {
