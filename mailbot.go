@@ -143,13 +143,6 @@ func main() {
 	flag.StringVar(&cfg.Port, "port", cfg.Port, "port to listen on")
 	flag.Parse()
 
-	if cfg.EmailStdout {
-		cfg.SmtpPassword = ""
-	}
-	if cfg.SmtpPassword == "" {
-		cfg.EmailStdout = true
-	}
-
 	if err := os.MkdirAll(cfg.PersistPath, 0770); err != nil {
 		log.Fatal(err)
 	}
