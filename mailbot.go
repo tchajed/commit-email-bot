@@ -215,7 +215,7 @@ func main() {
 	})
 
 	httpServer := &http.Server{
-		Addr:    fmt.Sprintf("%s:%s", cfg.Hostname, cfg.Port),
+		Addr:    fmt.Sprintf(":%s", cfg.Port),
 		Handler: mux,
 
 		TLSConfig: certManager.TLSConfig(),
