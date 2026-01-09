@@ -12,6 +12,7 @@ import (
 	"log"
 	"log/slog"
 	"net/http"
+	"net/smtp"
 	"os"
 	"os/exec"
 	"os/signal"
@@ -19,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
 
 	"github.com/tchajed/commit-emails-bot/stats"
@@ -28,6 +30,9 @@ import (
 	"github.com/gregjones/httpcache"
 	"golang.org/x/crypto/acme/autocert"
 )
+
+const MAX_EMAILS_PER_PUSH = 20
+const MAX_LINES_PER_EMAIL = 1000
 
 type AppConfig struct {
 	Hostname    string
@@ -42,6 +47,9 @@ type AppConfig struct {
 
 	DenyAccounts map[string]bool
 }
+
+const SMTP_HOSTNAME = "smtp.mailgun.org:2525"
+const SMTP_EMAIL_FROM = "postmaster@mail.commit-emails.xyz"
 
 func readEnvConfig(cfg *AppConfig) {
 	// If dotenvx is not used, an environment variable might still be encrypted.
@@ -328,6 +336,120 @@ func (srv Server) githubEventHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+func gitDiffHtml(gitDir string, commitId string) (string, error) {
+	gitCmd := exec.Command("git", "show", "--color=always", "--compact-summary", "--patch", "--pretty=format:%h|%B", commitId)
+	var gitStderr bytes.Buffer
+	gitCmd.Stderr = &gitStderr
+	gitCmd.Dir = gitDir
+
+	deltaCmd := exec.Command("delta", "--no-gitconfig", "--light")
+	// Chain gitCmd to deltaCmd
+	{
+		gitOut, err := gitCmd.StdoutPipe()
+		if err != nil {
+			return "", fmt.Errorf("error creating git stdout pipe: %w", err)
+		}
+		deltaCmd.Stdin = gitOut
+	}
+
+	ahaCmd := exec.Command("aha")
+	// chain deltaCmd to ahaCmd
+	{
+		deltaOut, err := deltaCmd.StdoutPipe()
+		if err != nil {
+			return "", fmt.Errorf("error creating delta stdout pipe: %w", err)
+		}
+		ahaCmd.Stdin = deltaOut
+	}
+
+	// get output of aha (end of pipe) into a buffer
+	var output bytes.Buffer
+	var stderrBuf bytes.Buffer
+	ahaCmd.Stdout = &output
+	ahaCmd.Stderr = &stderrBuf
+
+	// Start all commands
+	if err := gitCmd.Start(); err != nil {
+		return "", fmt.Errorf("error starting git: %w", err)
+	}
+	if err := deltaCmd.Start(); err != nil {
+		return "", fmt.Errorf("error starting delta: %w", err)
+	}
+	if err := ahaCmd.Start(); err != nil {
+		return "", fmt.Errorf("error starting aha: %w", err)
+	}
+
+	// Wait for all commands to complete
+	if err := gitCmd.Wait(); err != nil {
+		return "", fmt.Errorf("git show failed: %w", err)
+	}
+	if err := deltaCmd.Wait(); err != nil {
+		return "", fmt.Errorf("delta failed: %w", err)
+	}
+	if err := ahaCmd.Wait(); err != nil {
+		return "", fmt.Errorf("aha failed: %w (stderr: %s)", err, stderrBuf.String())
+	}
+
+	return output.String(), nil
+}
+
+type EmailMsg struct {
+	To, From, ReplyTo string
+	Subject           string
+	Date              string
+	Body              string
+}
+
+func sendEmail(cfg AppConfig, email EmailMsg) error {
+	tmpl := template.Must(template.New("email").Parse(`
+Content-Type: text/html; charset=UTF-8
+From: {{.From}}
+To: {{.To}}
+Reply-To: {{.ReplyTo}}
+Subject: {{.Subject}}
+Date: {{.Date}}
+
+{{.Body}}
+`))
+	var emailText bytes.Buffer
+	tmpl.Execute(&emailText, email)
+
+	// TODO: implement MAX_LINES_PER_EMAIL
+
+	if cfg.EmailStdout {
+		fmt.Printf("%s", emailText.String())
+		return nil
+	}
+
+	auth := smtp.PlainAuth("", email.From, cfg.SmtpPassword, SMTP_HOSTNAME)
+	toSplit := strings.Split(email.To, ",")
+	err := smtp.SendMail(SMTP_HOSTNAME, auth, email.From, toSplit, emailText.Bytes())
+	return err
+}
+
+func commitToEmail(gitDir string, repo string, branch string, commit *github.HeadCommit) (*EmailMsg, error) {
+	config, err := getConfig(gitDir)
+	if err != nil {
+		return nil, fmt.Errorf("could not get config for %s: %w", repo, err)
+	}
+	to := config.MailingList
+	body, err := gitDiffHtml(gitDir, commit.GetID())
+	if err != nil {
+		return nil, err
+	}
+	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
+	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
+	email := &EmailMsg{
+		To:      to,
+		From:    SMTP_EMAIL_FROM,
+		ReplyTo: fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail()),
+		Subject: subject,
+		Date:    time.Now().Format(time.RFC1123Z),
+		Body:    body,
+	}
+	return email, nil
+}
+
 func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent) error {
 	var client *github.Client
 	if h.srv.cfg.AppId != 0 {
@@ -348,60 +470,35 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 		}
 		return err
 	}
-	smtpPass := h.srv.cfg.SmtpPassword
-
-	args := []string{}
-	if h.srv.cfg.EmailStdout {
-		args = append(args, "--stdout")
-	}
-	config, err := getConfig(gitDir)
-	if err != nil {
-		return fmt.Errorf("could not get config for %s: %s", h.repo, err)
-	}
-	args = append(args, "-c", fmt.Sprintf("multimailhook.mailingList=%s", config.MailingList))
-	if config.Email.Format != "" {
-		args = append(args, "-c", fmt.Sprintf("multimailhook.commitEmailFormat=%s", config.Email.Format))
-	}
-	fromName := ev.GetHeadCommit().GetCommitter().GetName()
-	fromAddress := "notifications@commit-emails.xyz"
-	if fromName != "" {
-		fromAddress = fmt.Sprintf("%s <%s>", fromName, fromAddress)
-	}
-	args = append(args, "-c", fmt.Sprintf("multimailhook.from=%s", fromAddress))
-	args = append(args, "-c", fmt.Sprintf("multimailhook.commitBrowseURL=%s/commit/%%(id)s", ev.GetRepo().GetHTMLURL()))
-
-	cmd := exec.Command("./git_multimail_wrapper.py", args...)
-
-	commitLine := fmt.Sprintf("%s %s %s", *ev.Before, *ev.After, *ev.Ref)
-	stdin := bytes.NewReader([]byte(commitLine))
-	cmd.Stdin = stdin
-	stderrBuf := &bytes.Buffer{}
-	cmd.Stderr = stderrBuf
-	cmd.Env = os.Environ()
-	cmd.Env = append(cmd.Env, "GIT_DIR="+gitDir)
-	// constants that configure git_multimail
-	cmd.Env = append(cmd.Env, "GIT_CONFIG_GLOBAL="+"git-multimail.config")
-	// Provide the password via an environment variable - it cannot be in the
-	// config file since that's public, and we don't want it to be in the command
-	// line with -c since other processes can read that.
-	//
-	// Single quotes are necessary for git to parse this correctly.
-	if !h.srv.cfg.EmailStdout {
-		cmd.Env = append(cmd.Env, "GIT_CONFIG_PARAMETERS="+fmt.Sprintf("'multimailhook.smtpPass=%s'", smtpPass))
-	}
-	output, err := cmd.Output()
-	if err == nil {
-		if h.srv.cfg.EmailStdout {
-			fmt.Printf("%s", string(output))
+	var emails []EmailMsg
+	for _, commit := range ev.Commits {
+		if !commit.GetDistinct() {
+			continue
 		}
-		return nil
+		ref := ev.GetRef()
+		branch := strings.TrimPrefix(ref, "refs/heads/")
+		email, err := commitToEmail(gitDir, ev.GetRepo().GetName(), branch, commit)
+		if err != nil {
+			slog.Warn("could not generate email",
+				slog.String("repo", ev.GetRepo().GetFullName()),
+				slog.String("commit", commit.GetID()),
+				slog.String("error", err.Error()))
+			continue
+		}
+		emails = append(emails, *email)
 	}
-	if ee, ok := err.(*exec.ExitError); ok {
-		slog.Error("git_multimail_wrapper.py failed",
-			slog.String("push", commitLine),
-			slog.String("stdout", string(output)),
-			slog.String("stderr", stderrBuf.String()))
-		return fmt.Errorf("git_multimail_wrapper.py  failed: %s", ee.ProcessState.String())
+	if len(emails) > MAX_EMAILS_PER_PUSH {
+		emails = emails[len(emails)-MAX_EMAILS_PER_PUSH:]
+		slog.Warn(fmt.Sprintf("push generated %d emails, taking only %d",
+			len(emails),
+			MAX_EMAILS_PER_PUSH),
+			slog.String("repo", ev.GetRepo().GetFullName()))
+	}
+	for _, email := range emails {
+		err := sendEmail(h.srv.cfg, email)
+		if err != nil {
+			slog.Warn("could not send email", slog.String("repo", ev.GetRepo().GetFullName()), slog.Any("email", email))
+		}
 	}
 	return err
 }
