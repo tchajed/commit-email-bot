@@ -13,29 +13,13 @@ FROM debian:trixie-slim
 WORKDIR /app
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends git curl ca-certificates ssh; \
+    apt-get install -y --no-install-recommends git curl ca-certificates ssh git-delta aha; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
 # Pre-populate SSH known_hosts with common git hosting services
 RUN mkdir -p /root/.ssh && \
     ssh-keyscan github.com gitlab.com bitbucket.org >> /root/.ssh/known_hosts
-
-# Create a non-root user for Homebrew installation
-RUN useradd -m -s /bin/bash linuxbrew && \
-    mkdir -p /home/linuxbrew/.linuxbrew && \
-    chown -R linuxbrew:linuxbrew /home/linuxbrew
-
-# Install Homebrew as non-root user
-USER linuxbrew
-RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
-ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
-
-# Install git-delta and aha using brew
-RUN brew install git-delta aha
-
-# Switch back to root for remaining operations
-USER root
 
 # Install dotenvx
 RUN curl -sfS https://dotenvx.sh/install.sh | sh
