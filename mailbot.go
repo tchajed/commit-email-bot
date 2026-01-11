@@ -497,7 +497,10 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 	for _, email := range emails {
 		err := sendEmail(h.srv.cfg, email)
 		if err != nil {
-			slog.Warn("could not send email", slog.String("repo", ev.GetRepo().GetFullName()), slog.Any("email", email))
+			slog.Warn("could not send email",
+				slog.String("repo", ev.GetRepo().GetFullName()),
+				slog.String("email", email.To),
+				slog.Any("string", err.Error()))
 		}
 	}
 	return err
