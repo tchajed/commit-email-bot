@@ -48,7 +48,8 @@ type AppConfig struct {
 	DenyAccounts map[string]bool
 }
 
-const SMTP_HOSTNAME = "smtp.mailgun.org:2525"
+const SMTP_HOST = "smtp.mailgun.org"
+const SMTP_ADDR = "smtp.mailgun.org:2525"
 const SMTP_USER = "postmaster@mail.commit-emails.xyz"
 
 func readEnvConfig(cfg *AppConfig) {
@@ -421,9 +422,9 @@ Date: {{.Date}}
 		return nil
 	}
 
-	auth := smtp.PlainAuth(SMTP_USER, email.From, cfg.SmtpPassword, SMTP_HOSTNAME)
+	auth := smtp.PlainAuth("", SMTP_USER, cfg.SmtpPassword, SMTP_HOST)
 	toSplit := strings.Split(email.To, ",")
-	err := smtp.SendMail(SMTP_HOSTNAME, auth, email.From, toSplit, emailText.Bytes())
+	err := smtp.SendMail(SMTP_ADDR, auth, email.From, toSplit, emailText.Bytes())
 	return err
 }
 
