@@ -49,7 +49,7 @@ type AppConfig struct {
 }
 
 const SMTP_HOSTNAME = "smtp.mailgun.org:2525"
-const SMTP_EMAIL_FROM = "postmaster@mail.commit-emails.xyz"
+const SMTP_USER = "postmaster@mail.commit-emails.xyz"
 
 func readEnvConfig(cfg *AppConfig) {
 	// If dotenvx is not used, an environment variable might still be encrypted.
@@ -421,7 +421,7 @@ Date: {{.Date}}
 		return nil
 	}
 
-	auth := smtp.PlainAuth("", email.From, cfg.SmtpPassword, SMTP_HOSTNAME)
+	auth := smtp.PlainAuth(SMTP_USER, email.From, cfg.SmtpPassword, SMTP_HOSTNAME)
 	toSplit := strings.Split(email.To, ",")
 	err := smtp.SendMail(SMTP_HOSTNAME, auth, email.From, toSplit, emailText.Bytes())
 	return err
@@ -439,10 +439,18 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 	}
 	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
 	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
+	fromName := commit.GetAuthor().GetName()
+	var fromEmail string
+	if fromName == "" {
+		fromEmail = "notifications@commit-emails.xyz"
+	} else {
+		fromEmail = fmt.Sprintf("%s <%s>", fromName, "notifications@commit-emails.xyz")
+	}
+	replyTo := fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail())
 	email := &EmailMsg{
 		To:      to,
-		From:    SMTP_EMAIL_FROM,
-		ReplyTo: fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail()),
+		From:    fromEmail,
+		ReplyTo: replyTo,
 		Subject: subject,
 		Date:    time.Now().Format(time.RFC1123Z),
 		Body:    body,
