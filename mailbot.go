@@ -51,6 +51,7 @@ type AppConfig struct {
 const SMTP_HOST = "smtp.mailgun.org"
 const SMTP_ADDR = "smtp.mailgun.org:2525"
 const SMTP_USER = "postmaster@mail.commit-emails.xyz"
+const NOTIFY_EMAIL = "notify@mail.commit-emails.xyz"
 
 func readEnvConfig(cfg *AppConfig) {
 	// If dotenvx is not used, an environment variable might still be encrypted.
@@ -397,7 +398,7 @@ func gitDiffHtml(gitDir string, commitId string) (string, error) {
 type EmailMsg struct {
 	// Recipient address(es) for header and envelope
 	To string
-	// Sender address for SMTP envelope; needs to be from Mailgun domain, commit-emails.xyz
+	// Sender address for SMTP envelope
 	FromAddr string
 	// Formatted sender for header (e.g., "Name <email>")
 	From string
@@ -452,10 +453,15 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 	}
 	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
 	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
-	fromAddr := "notifications@commit-emails.xyz"
 	fromName := commit.GetAuthor().GetName()
+
+	// the SMTP envelope FromAddr and the From header should match: if they
+	// don't, Gmail tends to send to spam and Outlook rewrites the from address
+	// to something really odd
+	fromAddr := NOTIFY_EMAIL
 	from := fmt.Sprintf("%s <%s>", fromName, fromAddr)
-	replyTo := fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail())
+	// the Reply-To can use the actual commiter's email
+	replyTo := fmt.Sprintf("%s <%s>", fromName, commit.GetAuthor().GetEmail())
 	email := &EmailMsg{
 		To:       to,
 		From:     from,
