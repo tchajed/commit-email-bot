@@ -63,7 +63,6 @@ dotenvx run -f .env.keys -- docker compose up
 
 - Expose a branch filter option
 - Clean up old cloned repos to free up space.
-- Add a link to GitHub
 - Upgrade to a paid Mailgun account to support a wider audience.
 
 ## Acknowledgment

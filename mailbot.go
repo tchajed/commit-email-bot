@@ -370,8 +370,6 @@ Date: {{.Date}}
 	var emailText bytes.Buffer
 	tmpl.Execute(&emailText, email)
 
-	// TODO: implement MAX_LINES_PER_EMAIL
-
 	if cfg.EmailStdout {
 		fmt.Printf("%s", emailText.String())
 		return nil

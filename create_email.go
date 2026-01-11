@@ -18,6 +18,8 @@ func coloredDiffToHtml(output string, commitURL string) (string, error) {
 	// Skip the "---" separator line
 	_, diff, _ := strings.Cut(rest, "\n")
 
+	// TODO: implement MAX_LINES_PER_EMAIL
+
 	// Convert the rest of the diff to HTML using aha to process ANSI colors
 	ahaCmd := exec.Command("aha", "--no-header")
 	ahaCmd.Stdin = strings.NewReader(diff)
