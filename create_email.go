@@ -10,6 +10,18 @@ import (
 	"github.com/google/go-github/v62/github"
 )
 
+func coloredDiffToHtml(diff string) (string, error) {
+	ahaCmd := exec.Command("aha", "--no-header")
+	ahaCmd.Stdin = strings.NewReader(diff)
+	var stdout, stderr bytes.Buffer
+	ahaCmd.Stdout, ahaCmd.Stderr = &stdout, &stderr
+	err := ahaCmd.Run()
+	if err != nil {
+		return "", fmt.Errorf("error running aha: %w", err)
+	}
+	return fmt.Sprintf("<pre>\n%s</pre>", stdout.String()), nil
+}
+
 func gitDiffHtml(gitDir string, commitId string) (string, error) {
 	gitCmd := exec.Command("git", "show", "--color=always", "--compact-summary", "--patch", "--pretty=format:%h|%B", commitId)
 	var gitStderr bytes.Buffer
@@ -26,45 +38,27 @@ func gitDiffHtml(gitDir string, commitId string) (string, error) {
 		deltaCmd.Stdin = gitOut
 	}
 
-	ahaCmd := exec.Command("aha")
-	// chain deltaCmd to ahaCmd
-	{
-		deltaOut, err := deltaCmd.StdoutPipe()
-		if err != nil {
-			return "", fmt.Errorf("error creating delta stdout pipe: %w", err)
-		}
-		ahaCmd.Stdin = deltaOut
-	}
+	// Capture delta output into a buffer
+	var deltaOutput bytes.Buffer
+	deltaCmd.Stdout = &deltaOutput
 
-	// get output of aha (end of pipe) into a buffer
-	var output bytes.Buffer
-	var stderrBuf bytes.Buffer
-	ahaCmd.Stdout = &output
-	ahaCmd.Stderr = &stderrBuf
-
-	// Start all commands
+	// Start commands
 	if err := gitCmd.Start(); err != nil {
 		return "", fmt.Errorf("error starting git: %w", err)
 	}
 	if err := deltaCmd.Start(); err != nil {
 		return "", fmt.Errorf("error starting delta: %w", err)
 	}
-	if err := ahaCmd.Start(); err != nil {
-		return "", fmt.Errorf("error starting aha: %w", err)
-	}
 
-	// Wait for all commands to complete
+	// Wait for commands to complete
 	if err := gitCmd.Wait(); err != nil {
 		return "", fmt.Errorf("git show failed: %w", err)
 	}
 	if err := deltaCmd.Wait(); err != nil {
 		return "", fmt.Errorf("delta failed: %w", err)
 	}
-	if err := ahaCmd.Wait(); err != nil {
-		return "", fmt.Errorf("aha failed: %w (stderr: %s)", err, stderrBuf.String())
-	}
 
-	return output.String(), nil
+	return coloredDiffToHtml(deltaOutput.String())
 }
 
 func commitToEmail(gitDir string, repo string, branch string, commit *github.HeadCommit) (*EmailMsg, error) {
