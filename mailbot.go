@@ -440,13 +440,9 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 	}
 	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
 	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
+	fromEmail := "notifications@commit-emails.xyz"
 	fromName := commit.GetAuthor().GetName()
-	var fromEmail string
-	if fromName == "" {
-		fromEmail = "notifications@commit-emails.xyz"
-	} else {
-		fromEmail = fmt.Sprintf("%s <%s>", fromName, "notifications@commit-emails.xyz")
-	}
+	fromEmail = fmt.Sprintf("%s <%s>", fromName, "notifications@commit-emails.xyz")
 	replyTo := fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail())
 	email := &EmailMsg{
 		To:      to,
@@ -508,7 +504,9 @@ func (h PushHandler) githubPushHandler(ctx context.Context, ev *github.PushEvent
 		if err != nil {
 			slog.Warn("could not send email",
 				slog.String("repo", ev.GetRepo().GetFullName()),
-				slog.String("email", email.To),
+				slog.String("to", email.To),
+				slog.String("from", email.From),
+				slog.String("reply-to", email.ReplyTo),
 				slog.Any("string", err.Error()))
 		}
 	}
