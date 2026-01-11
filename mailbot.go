@@ -395,10 +395,22 @@ func gitDiffHtml(gitDir string, commitId string) (string, error) {
 }
 
 type EmailMsg struct {
-	To, From, ReplyTo string
-	Subject           string
-	Date              string
-	Body              string
+	// Recipient address(es) for header and envelope
+	To string
+	// Sender address for SMTP envelope; needs to be from Mailgun domain, commit-emails.xyz
+	FromAddr string
+	// Formatted sender for header (e.g., "Name <email>")
+	From string
+	// Reply-To address for header
+	ReplyTo string
+
+	// Subject header
+	Subject string
+	// Date header
+	Date string
+
+	// Email body
+	Body string
 }
 
 func sendEmail(cfg AppConfig, email EmailMsg) error {
@@ -424,7 +436,7 @@ Date: {{.Date}}
 
 	auth := smtp.PlainAuth("", SMTP_USER, cfg.SmtpPassword, SMTP_HOST)
 	toSplit := strings.Split(email.To, ",")
-	err := smtp.SendMail(SMTP_ADDR, auth, email.From, toSplit, emailText.Bytes())
+	err := smtp.SendMail(SMTP_ADDR, auth, email.FromAddr, toSplit, emailText.Bytes())
 	return err
 }
 
@@ -440,17 +452,18 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 	}
 	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
 	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
-	fromEmail := "notifications@commit-emails.xyz"
+	fromAddr := "notifications@commit-emails.xyz"
 	fromName := commit.GetAuthor().GetName()
-	fromEmail = fmt.Sprintf("%s <%s>", fromName, "notifications@commit-emails.xyz")
+	from := fmt.Sprintf("%s <%s>", fromName, fromAddr)
 	replyTo := fmt.Sprintf("%s <%s>", commit.GetAuthor().GetName(), commit.GetAuthor().GetEmail())
 	email := &EmailMsg{
-		To:      to,
-		From:    fromEmail,
-		ReplyTo: replyTo,
-		Subject: subject,
-		Date:    time.Now().Format(time.RFC1123Z),
-		Body:    body,
+		To:       to,
+		From:     from,
+		FromAddr: fromAddr,
+		ReplyTo:  replyTo,
+		Subject:  subject,
+		Date:     time.Now().Format(time.RFC1123Z),
+		Body:     body,
 	}
 	return email, nil
 }
