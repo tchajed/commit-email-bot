@@ -25,7 +25,7 @@ import (
 	"github.com/tchajed/commit-emails-bot/stats"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v75/github"
 	"github.com/gregjones/httpcache"
 	"golang.org/x/crypto/acme/autocert"
 )

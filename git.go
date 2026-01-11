@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 
 	"github.com/bradleyfalzon/ghinstallation/v2"
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v75/github"
 )
 
 func repoGitDir(persistPath string, repo *github.PushEventRepository) string {

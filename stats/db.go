@@ -2,10 +2,11 @@ package stats
 
 import (
 	"database/sql"
-	"github.com/google/go-github/v62/github"
-	_ "github.com/mattn/go-sqlite3"
 	"log/slog"
 	"path/filepath"
+
+	"github.com/google/go-github/v75/github"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Database struct {

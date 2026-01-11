@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v62/github"
+	"github.com/google/go-github/v75/github"
 )
 
 func coloredDiffToHtml(output string, commitURL string) (string, error) {
