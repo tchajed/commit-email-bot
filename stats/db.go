@@ -88,18 +88,11 @@ where installation_id = ?
 }
 
 func (db Database) AddPush(event *github.PushEvent) {
-	// estimate how many new emails are sent - this doesn't directly ask
-	// git_multimail.py so it might be slightly different from how the script
-	// computes new commits
 	new_emails := 0
 	for _, commit := range event.Commits {
 		if commit.GetDistinct() {
 			new_emails++
 		}
-	}
-	if new_emails > 1 {
-		// one extra email for the refchange notice
-		new_emails++
 	}
 	_, err := db.conn.Exec(`insert into repo_stats
 	(repo_id, repo_name, num_emails) values (?, ?, ?)

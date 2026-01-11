@@ -49,13 +49,9 @@ Finally, build and run the server with `dotenvx run -f .env.keys -- docker compo
 
 ## Future work
 
-- Expose a branch filter option (simplifying the set of git_multimail options).
+- Expose a branch filter option
 - Clean up old cloned repos to free up space.
-- Use the GitHub API to fetch diffs and format them using pygments or shiki. This would avoid cloning the repo (the
-  major source of state) and remove the dependency on git_multimail.py, as well as enable other features.
-  - Add syntax highlight within diffs
-  - Improve the linking to GitHub
-  - Allow filtering emails based on file path
+- Add a link to GitHub
 - Upgrade to a paid Mailgun account to support a wider audience.
 
 ## Acknowledgment

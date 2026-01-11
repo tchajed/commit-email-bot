@@ -9,23 +9,20 @@ RUN go mod download
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
 
-FROM python:3.12-slim
+FROM debian:trixie-slim
 WORKDIR /app
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends git curl; \
+    apt-get install -y --no-install-recommends git curl ca-certificates ssh git-delta aha; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# cache this installation first
+# Pre-populate SSH known_hosts with common git hosting services
+RUN mkdir -p /root/.ssh && \
+    ssh-keyscan github.com gitlab.com bitbucket.org >> /root/.ssh/known_hosts
+
 # Install dotenvx
 RUN curl -sfS https://dotenvx.sh/install.sh | sh
-
-# Install uv for running the Python wrapper script
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-COPY git_multimail_wrapper.py git_multimail_wrapper.py.lock git-multimail.config ./
-RUN ./git_multimail_wrapper.py --version
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
