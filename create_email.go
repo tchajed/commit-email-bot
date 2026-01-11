@@ -10,7 +10,15 @@ import (
 	"github.com/google/go-github/v62/github"
 )
 
-func coloredDiffToHtml(diff string) (string, error) {
+func coloredDiffToHtml(output string, commitURL string) (string, error) {
+	// Parse the first line which has format "hash|message"
+	firstLine, rest, _ := strings.Cut(output, "\n")
+	hash, message, _ := strings.Cut(firstLine, "|")
+
+	// Skip the "---" separator line
+	_, diff, _ := strings.Cut(rest, "\n")
+
+	// Convert the rest of the diff to HTML using aha to process ANSI colors
 	ahaCmd := exec.Command("aha", "--no-header")
 	ahaCmd.Stdin = strings.NewReader(diff)
 	var stdout, stderr bytes.Buffer
@@ -19,10 +27,21 @@ func coloredDiffToHtml(diff string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("error running aha: %w", err)
 	}
-	return fmt.Sprintf("<pre>\n%s</pre>", stdout.String()), nil
+
+	// Create the first part of the email with the
+	table := fmt.Sprintf(`<table cellpadding="5" align="left">
+<tr><td><a href="%s">%s"</a></td>
+<td>%s</td></tr>
+</table>`, commitURL, hash, message)
+	emailHtml := fmt.Sprintf(`<pre>
+%s
+%s
+</pre>`, table, stdout.String())
+
+	return emailHtml, nil
 }
 
-func gitDiffHtml(gitDir string, commitId string) (string, error) {
+func gitDiffHtml(gitDir string, commitId string, commitURL string) (string, error) {
 	gitCmd := exec.Command("git", "show", "--color=always", "--compact-summary", "--patch", "--pretty=format:%h|%B", commitId)
 	var gitStderr bytes.Buffer
 	gitCmd.Stderr = &gitStderr
@@ -58,7 +77,7 @@ func gitDiffHtml(gitDir string, commitId string) (string, error) {
 		return "", fmt.Errorf("delta failed: %w", err)
 	}
 
-	return coloredDiffToHtml(deltaOutput.String())
+	return coloredDiffToHtml(deltaOutput.String(), commitURL)
 }
 
 func commitToEmail(gitDir string, repo string, branch string, commit *github.HeadCommit) (*EmailMsg, error) {
@@ -67,7 +86,7 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 		return nil, fmt.Errorf("could not get config for %s: %w", repo, err)
 	}
 	to := config.MailingList
-	body, err := gitDiffHtml(gitDir, commit.GetID())
+	body, err := gitDiffHtml(gitDir, commit.GetID(), commit.GetURL())
 	if err != nil {
 		return nil, err
 	}
