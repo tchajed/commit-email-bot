@@ -45,7 +45,19 @@ Copy the private key for the production secrets in `.env.production`:
 rsync .env.keys root@commit-emails.xyz:./commit-email-bot/
 ```
 
-Finally, build and run the server with `dotenvx run -f .env.keys -- docker compose up --build`.
+Building the container on the droplet is difficult. You can build it locally and push it:
+
+```sh
+docker buildx build -t tchajed/commit-email-bot:latest . --platform linux/amd64
+docker push tchajed/commit-email-bot:latest
+```
+
+Then pull the image and run the container:
+
+```sh
+docker pull tchajed/commit-email-bot:latest
+dotenvx run -f .env.keys -- docker compose up
+```
 
 ## Future work
 
