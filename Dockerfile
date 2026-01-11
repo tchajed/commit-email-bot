@@ -9,23 +9,36 @@ RUN go mod download
 COPY . ./
 RUN --mount=type=cache,target=/root/.cache/go-build go build -v -o /out/commit-email-bot .
 
-FROM python:3.12-slim
+FROM debian:trixie-slim
 WORKDIR /app
 RUN set -eux; \
     apt-get update; \
-    apt-get install -y --no-install-recommends git curl; \
+    apt-get install -y --no-install-recommends git curl ca-certificates build-essential procps file ssh; \
     apt-get clean; \
     rm -rf /var/lib/apt/lists/*
 
-# cache this installation first
+# Pre-populate SSH known_hosts with common git hosting services
+RUN mkdir -p /root/.ssh && \
+    ssh-keyscan github.com gitlab.com bitbucket.org >> /root/.ssh/known_hosts
+
+# Create a non-root user for Homebrew installation
+RUN useradd -m -s /bin/bash linuxbrew && \
+    mkdir -p /home/linuxbrew/.linuxbrew && \
+    chown -R linuxbrew:linuxbrew /home/linuxbrew
+
+# Install Homebrew as non-root user
+USER linuxbrew
+RUN NONINTERACTIVE=1 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
+
+# Install git-delta and aha using brew
+RUN brew install git-delta aha
+
+# Switch back to root for remaining operations
+USER root
+
 # Install dotenvx
 RUN curl -sfS https://dotenvx.sh/install.sh | sh
-
-# Install uv for running the Python wrapper script
-COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /usr/local/bin/
-
-COPY git_multimail_wrapper.py git_multimail_wrapper.py.lock git-multimail.config ./
-RUN ./git_multimail_wrapper.py --version
 
 # Copy the Go binary built from the build stage
 COPY --from=build /out/commit-email-bot .
