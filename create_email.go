@@ -41,7 +41,7 @@ func coloredDiffToHtml(output string, commitURL string) (string, error) {
 	table := fmt.Sprintf(`<table cellpadding="5" align="left">
 <tr><td><a href="%s">%s</a></td>
 <td>%s</td></tr>
-</table>`, commitURL, hash, message)
+</table><br />`, commitURL, hash, message)
 	emailHtml := fmt.Sprintf(`<pre>
 %s
 %s
