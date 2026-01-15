@@ -99,6 +99,8 @@ func commitToEmail(gitDir string, repo string, branch string, commit *github.Hea
 	if err != nil {
 		return nil, err
 	}
+	footer := fmt.Sprintf("-- <br>\ncommit-email-bot jD27HVpTX3tELRBjcpGsK6io7 %s\n", repo)
+	body = body + footer
 	msg, _, _ := strings.Cut(commit.GetMessage(), "\n")
 	subject := fmt.Sprintf("%s %s: %s", repo, branch, msg)
 	fromName := commit.GetAuthor().GetName()
